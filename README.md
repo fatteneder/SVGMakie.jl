@@ -6,10 +6,14 @@
   - IMO CairoMakie is the backend that is easiest to understand. I will try to mimick this first.
   - Mimiced a project structure similar to CairoMakie.jl
 - [x] Get simple plot going through Makies interface.
-- [-] Implement `svg_color`.
-- [ ] SVGs are strucutered xml files. It allows to add CSS sections and later refere to them
+- [x] Implement `svg_color`.
+- [x] SVGs are strucutered xml files. It allows to add CSS sections and later refere to them
   in primitives for styling or automation. We should utilize `XML.jl` to construct the files
   and build a SVG type that is just a wrapper around an `XML.Document` object.
+- [ ] Figure out if XML prologs are of any relevance for us,
+  https://oreillymedia.github.io/Using_SVG/extras/ch01-XML.html
+- [x] Implement `Lines, LineScatter`.
+- [ ] Fix opacity for `Lines, LineScatter`.
 
 # Resources
 

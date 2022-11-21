@@ -33,7 +33,6 @@ function draw_background(screen::Screen, scene::Scene)
     if scene.clear[]
         bg = scene.backgroundcolor[]
         screen.svg.fill = svg_color(bg)
-        # screen > "fill=" * svg_color(bg)
     end
     foreach(child_scene-> draw_background(screen, child_scene), scene.children)
 end

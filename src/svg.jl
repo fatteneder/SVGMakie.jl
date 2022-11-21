@@ -16,6 +16,12 @@ end
 function Base.setproperty!(svg::SVG, p::Symbol, val)
     return setproperty!(root(svg), p, val)
 end
+Base.getproperty(svg::SVG, s::AbstractString) = getproperty(root(svg), s)
+Base.setproperty!(svg::SVG, s::AbstractString, val) = setproperty!(root(svg), s)
+
+# we would like to have these methods, so we pirate them here
+Base.getproperty(node::XML.AbstractXMLNode, s::AbstractString) = getproperty(node, Symbol(s))
+Base.setproperty!(node::XML.AbstractXMLNode, s::AbstractString, val) = setproperty!(node, Symbol(s), val)
 
 
 xml(svg::SVG) = getfield(svg, :xml)

@@ -95,10 +95,10 @@ function draw_single(primitive::Lines, svg, positions, color, linewidth, dash)
     path.d = String(take!(io))
     path.fill = "none"
     path.stroke = svg_color(color)
-    setproperty!(path, Symbol("stroke-width"), linewidth)
-    setproperty!(path, Symbol("stroke-opacity"), svg_color_alpha(color))
+    path."stroke-width" = linewidth
+    path."stroke-opacity" = svg_color_alpha(color)
     if !isnothing(dash)
-        setproperty!(path, Symbol("stroke-dasharray"), join(dash .* linewidth, ","))
+        path."stroke-dasharray" = join(dash .* linewidth, ",")
     end
     push!(svg, path)
 end
@@ -129,10 +129,10 @@ function draw_single(primitive::LineSegments, svg, positions, color, linewidth, 
     path.d = String(take!(io))
     path.fill = "none"
     path.stroke = svg_color(color)
-    setproperty!(path, Symbol("stroke-width"), linewidth)
-    setproperty!(path, Symbol("stroke-opacity"), svg_color_alpha(color))
+    path."stroke-width" = linewidth
+    path."stroke-opacity" = svg_color_alpha(color)
     if !isnothing(dash)
-        setproperty!(path, Symbol("stroke-dasharray"), join(dash .* linewidth, ","))
+        path."stroke-dasharray" = join(dash .* linewidth, ",")
     end
     push!(svg, path)
 end
@@ -181,7 +181,7 @@ function draw_multi(primitive::Union{Lines, LineSegments}, svg, positions, color
         # # this happens if one color was given for each segment
         if c1 == c2
             line.stroke = svg_color(c1)
-            setproperty!(line, Symbol("stroke-opacity"), svg_color_alpha(c1))
+            line."stroke-opacity" = svg_color_alpha(c1)
         else
             lingrad = Element("linearGradient")
             id = "linearGradient"*string(hash(positions[i]))
@@ -190,12 +190,16 @@ function draw_multi(primitive::Union{Lines, LineSegments}, svg, positions, color
             lingrad.y1 = "0"
             lingrad.x2 = "1"
             lingrad.y2 = "1"
-            push!(lingrad, Element("stop", Dict(:offset => "0",
-                                                Symbol("stop-color") => svg_color(c1),
-                                                Symbol("stop-opacity") => svg_color_alpha(c1))))
-            push!(lingrad, Element("stop", Dict(:offset => "1",
-                                                Symbol("stop-color") => svg_color(c2),
-                                                Symbol("stop-opacity") => svg_color_alpha(c2))))
+            stop1 = Element("stop")
+            stop1.offset = "0"
+            stop1."stop-color" = svg_color(c1)
+            stop1."stop-opacity" = svg_color_alpha(c1)
+            stop2 = Element("stop")
+            stop2.offset = "0"
+            stop2."stop-color" = svg_color(c2)
+            stop2."stop-opacity" = svg_color_alpha(c2)
+            push!(lingrad, stop1)
+            push!(lingrad, stop2)
             push!(defs(svg), lingrad)
             line.stroke = svg_url(id)
         end
@@ -205,9 +209,9 @@ function draw_multi(primitive::Union{Lines, LineSegments}, svg, positions, color
             error("SVG doesn't support two different line widths ($(linewidths[i]) and $(linewidths[i+1])) at the endpoints of a line.")
         end
 
-        setproperty!(line, Symbol("stroke-width"), linewidths[i])
+        line."stroke-width" = linewidths[i]
         if !isnothing(dash)
-            setproperty!(line, Symbol("stroke-dasharray"), join(dash .* linewidths[i], ","))
+            line."stroke-dasharray" = join(dash .* linewidths[i], ",")
         end
 
         push!(svg, line)

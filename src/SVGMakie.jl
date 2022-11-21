@@ -2,6 +2,7 @@ module SVGMakie
 
 using Makie, LinearAlgebra
 using Colors, GeometryBasics, FileIO
+using XML
 
 # CairoMakie uses those for salting, whatever that means ...
 # import SHA
@@ -23,10 +24,12 @@ for name in names(Makie, all=true)
     end
 end
 
+include("types.jl")
+include("svg.jl")
 include("screen.jl")
 include("display.jl")
 include("infrastructure.jl")
-# include("utils.jl")
+include("utils.jl")
 # include("primitives.jl")
 # include("overrides.jl")
 

@@ -10,27 +10,13 @@ function activate!(; inline=LAST_INLINE[], type="png", screen_config...)
 end
 
 
-mutable struct ScreenConfig
-    visible::Bool
-end
-
-
-mutable struct Screen <: Makie.MakieScreen
-    scene::Scene
-    config::ScreenConfig
-    # Should we use an IOContext instead, seems like it could be useful in managing
-    # the xml subsections.
-    io::IOBuffer
-end
-
-
 function Base.empty!(screen::Screen)
     empty!(screen.io)
 end
 
 
 Base.close(screen::Screen) = empty!(screen)
-Base.size(screen::Screen) =  (100, 100)
+Base.size(screen::Screen) = (screen.svg.width, screen.svg.height)
 # we render the scene directly, since we have
 # # no screen dependent state like in e.g. opengl
 Base.insert!(screen::Screen, scene::Scene, plot) = nothing
@@ -41,6 +27,8 @@ Base.show(io::IO, ::MIME"text/plain", screen::Screen) = println(io, "SVGMakie.Sc
 
 function Makie.apply_screen_config!(
         screen::Screen, config::ScreenConfig, scene::Scene, io::IO, m::MIME{SYM}) where {SYM}
+    # TODO Do we need to copy whatever is in io to screen.svg?
+    # Could we use XML.Document for that?
     apply_config!(screen, config)
     return screen
 end
@@ -58,7 +46,7 @@ function apply_config!(screen::Screen, config::ScreenConfig)
 end
 
 
-Screen(scene, config::ScreenConfig) = Screen(scene, config, IOBuffer())
+Screen(scene, config::ScreenConfig) = Screen(scene, config, IOBuffer(), SVG())
 
 
 function Screen(scene::Scene; screen_config...)
@@ -68,14 +56,10 @@ end
 
 
 function Screen(screen::Screen, io::IOBuffer)
-    return Screen(screen.scene, screen.config, io)
+    return Screen(screen.scene, screen.config, io, SVG())
 end
 
 
 function Makie.colorbuffer(screen::Screen)
     error("Not implemented!")
 end
-
-
-Base.:(>)(screen::Screen, s::AbstractString) = print(screen.io, s)
-Base.:(>>)(screen::Screen, s::AbstractString) = println(screen.io, s)

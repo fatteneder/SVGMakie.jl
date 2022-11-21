@@ -5,6 +5,7 @@ function SVG(; version="1.1", width=1000, height=1000)
     svg.height = height
     svg.version = version
     svg.xmlns = "http://www.w3.org/2000/svg"
+    push!(root(svg), Element("defs"))
     return svg
 end
 
@@ -20,6 +21,7 @@ end
 xml(svg::SVG) = getfield(svg, :xml)
 prolog(svg::SVG) = xml(svg).prolog
 root(svg::SVG) = xml(svg).root
+defs(svg::SVG) = xml(svg).root[1]
 setprolog!(svg::SVG, prolog) = xml(svg).prolog = prolog
 setroot!(svg::SVG, root) = xml(svg).root = root
 

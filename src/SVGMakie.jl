@@ -30,7 +30,7 @@ include("screen.jl")
 include("display.jl")
 include("infrastructure.jl")
 include("utils.jl")
-# include("primitives.jl")
+include("primitives.jl")
 # include("overrides.jl")
 
 # function __init__()

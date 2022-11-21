@@ -6,10 +6,10 @@
   - IMO CairoMakie is the backend that is easiest to understand. I will try to mimick this first.
   - Mimiced a project structure similar to CairoMakie.jl
 - [x] Get simple plot going through Makies interface.
-- [ ] Implement `svg_color`.
+- [-] Implement `svg_color`.
 - [ ] SVGs are strucutered xml files. It allows to add CSS sections and later refere to them
-  in primitives for styling or automation. Try utilizing an IOContext and some custom overloads
-  for screen so that we can write the corresponding sections in a convinient way.
+  in primitives for styling or automation. We should utilize `XML.jl` to construct the files
+  and build a SVG type that is just a wrapper around an `XML.Document` object.
 
 # Resources
 

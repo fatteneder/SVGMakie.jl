@@ -11,7 +11,6 @@ function Makie.backend_show(screen::Screen, io::IO, ::MIME"image/svg+xml", scene
     Makie.push_screen!(scene, screen)
     # Display the plot on a new screen writing to a string, so that we can manipulate the
     # result (the io in `screen` should directly write to the file we're saving)
-    println("or here?")
     svg = sprint(sizehint=4096) do io2
         screen2 = Screen(screen, io2)
         svg_draw(screen2, scene)

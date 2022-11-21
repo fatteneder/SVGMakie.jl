@@ -2,7 +2,7 @@
 svg_color(color) = string(color)
 svg_color(color::Colorant) = "#$(hex(color, :rrggbb))"
 
-svg_color_alpha(color) = ""
+svg_color_alpha(color) = "1"
 svg_color_alpha(color::TransparentColor) = "$(color.alpha)"
 
 svg_url(url) = "url(#$url)"

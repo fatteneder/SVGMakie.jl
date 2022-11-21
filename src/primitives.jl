@@ -80,7 +80,6 @@ function draw_single(primitive::Lines, svg, positions, color, linewidth, dash)
 
     n = length(positions)
     @inbounds for i in 1:n
-        println("sres")
         p = positions[i]
         # only take action for non-NaNs
         if !isnan(p)
@@ -96,7 +95,8 @@ function draw_single(primitive::Lines, svg, positions, color, linewidth, dash)
     path.d = String(take!(io))
     path.fill = "none"
     path.stroke = svg_color(color)
-    setproperty!(path, Symbol("stroke-width"), svg_color(color))
+    setproperty!(path, Symbol("stroke-width"), linewidth)
+    setproperty!(path, Symbol("stroke-opacity"), svg_color_alpha(color))
     if !isnothing(dash)
         setproperty!(path, Symbol("stroke-dasharray"), join(dash .* linewidth, ","))
     end
@@ -129,7 +129,8 @@ function draw_single(primitive::LineSegments, svg, positions, color, linewidth, 
     path.d = String(take!(io))
     path.fill = "none"
     path.stroke = svg_color(color)
-    setproperty!(path, Symbol("stroke-width"), svg_color(color))
+    setproperty!(path, Symbol("stroke-width"), linewidth)
+    setproperty!(path, Symbol("stroke-opacity"), svg_color_alpha(color))
     if !isnothing(dash)
         setproperty!(path, Symbol("stroke-dasharray"), join(dash .* linewidth, ","))
     end
@@ -180,8 +181,7 @@ function draw_multi(primitive::Union{Lines, LineSegments}, svg, positions, color
         # # this happens if one color was given for each segment
         if c1 == c2
             line.stroke = svg_color(c1)
-            line.fill = "none"
-            nothing
+            setproperty!(line, Symbol("stroke-opacity"), svg_color_alpha(c1))
         else
             lingrad = Element("linearGradient")
             id = "linearGradient"*string(hash(positions[i]))
@@ -190,8 +190,12 @@ function draw_multi(primitive::Union{Lines, LineSegments}, svg, positions, color
             lingrad.y1 = "0"
             lingrad.x2 = "1"
             lingrad.y2 = "1"
-            push!(lingrad, Element("stop", Dict(:offset => "0", Symbol("stop-color") => svg_color(c1))))
-            push!(lingrad, Element("stop", Dict(:offset => "1", Symbol("stop-color") => svg_color(c2))))
+            push!(lingrad, Element("stop", Dict(:offset => "0",
+                                                Symbol("stop-color") => svg_color(c1),
+                                                Symbol("stop-opacity") => svg_color_alpha(c1))))
+            push!(lingrad, Element("stop", Dict(:offset => "1",
+                                                Symbol("stop-color") => svg_color(c2),
+                                                Symbol("stop-opacity") => svg_color_alpha(c2))))
             push!(defs(svg), lingrad)
             line.stroke = svg_url(id)
         end

@@ -1,4 +1,4 @@
-function SVG(; version="1.1", width=400, height=300)
+function SVG(; version="1.1", width=1000, height=1000)
     svg = SVG(Document())
     setroot!(svg, Element("svg"))
     svg.width = width
@@ -27,8 +27,8 @@ setroot!(svg::SVG, root) = xml(svg).root = root
 Base.getindex(svg::SVG, idx) = getindex(root(svg), idx)
 Base.setindex!(svg::SVG, val, idx) = setindex!(root(svg), idx, el)
 
-Base.push!(svg::SVG, el) = push!(root(svg))
-Base.append!(svg::SVG, el) = append!(root(svg))
+Base.push!(svg::SVG, el) = push!(root(svg), el)
+Base.append!(svg::SVG, els) = append!(root(svg), els)
 
 
 function Base.show(io::IO, ::MIME"text/plain", svg::SVG)

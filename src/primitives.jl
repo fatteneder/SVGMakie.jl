@@ -97,6 +97,7 @@ function draw_single(primitive::Lines, svg, positions, color, linewidth, dash)
     path.stroke = svg_color(color)
     path."stroke-width" = linewidth
     path."stroke-opacity" = svg_color_alpha(color)
+    path."stroke-linecap" = "round"
     if !isnothing(dash)
         path."stroke-dasharray" = join(dash .* linewidth, ",")
     end
@@ -131,6 +132,7 @@ function draw_single(primitive::LineSegments, svg, positions, color, linewidth, 
     path.stroke = svg_color(color)
     path."stroke-width" = linewidth
     path."stroke-opacity" = svg_color_alpha(color)
+    path."stroke-linecap" = "round"
     if !isnothing(dash)
         path."stroke-dasharray" = join(dash .* linewidth, ",")
     end
@@ -210,6 +212,7 @@ function draw_multi(primitive::Union{Lines, LineSegments}, svg, positions, color
         end
 
         line."stroke-width" = linewidths[i]
+        line."stroke-linecap" = "round"
         if !isnothing(dash)
             line."stroke-dasharray" = join(dash .* linewidths[i], ",")
         end

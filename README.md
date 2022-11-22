@@ -15,7 +15,15 @@
 - [x] Implement `Lines, LineScatter`.
 - [ ] Fix opacity for `Lines, LineScatter`.
 - [ ] `Lines, Linescatter` seem to be not placed correctly.
-- [ ] Look into the structure of the `.svg` output from `CairoMakie.jl`.
+- [x] Look into the structure of the `.svg` output from `CairoMakie.jl`.
+  For text: Every glyph is rendered separately with a `<g>` section.
+- [-] Implement basic text support.
+  We have text, but its wrongly positioned.
+- [ ] Finish up text.
+- [x] Add rounded edges for `Lines, LineScatter` strokes.
+- [ ] Lines: stroke-linecap = "round" adds a half circle centered at the endpoint of the line.
+  How do Cairo and GLMakie handle those? To get it right, we would have to shorten the line by
+  half a stroke width on each side.
 
 # Resources
 
@@ -54,6 +62,7 @@ renders the same in different environments.
 'object bounding box' coordinates can be useful when applying filters, masks, patterns etc
 to text, because they can also translate to chiildren `<tspan>` elements inside a `<text>`.
 
-# Makie Notes
+# Other Notes
 
 - Shouldn't each backend add its defaults to `Makie.minimal_default` by itself?
+- `XML.jl` should implement `Base.push!(el::Element, s::String)`.

@@ -41,6 +41,19 @@ towards bottom.
 SVG extension is `.svg`. Compressed SVGs have extension `.svgz` but they are more problematic
 to get rendered propely on user agents. (not sure if this is only a issue for webservers...)
 
+Text: https://www.w3.org/Graphics/SVG/1.1/text.html
+SVG text is rendered the same way as other primitives. It can be entered with
+`<text>, <tspan>, <tref>` elements. SVG does not compute line breaks.
+Instead either split text into multiple `<text>` elements or
+fill a `<text>` elements with multiple `<tspan>` childs. This requires manual positioning
+of the first character of each new line.
+The `<tspan>` approach has the benefit that it allows user text selection over multiple lines.
+
+SVG allows to embed (possibly subsets of a) font or use web fonts to ensure that SVG
+renders the same in different environments.
+'object bounding box' coordinates can be useful when applying filters, masks, patterns etc
+to text, because they can also translate to chiildren `<tspan>` elements inside a `<text>`.
+
 # Makie Notes
 
 - Shouldn't each backend add its defaults to `Makie.minimal_default` by itself?

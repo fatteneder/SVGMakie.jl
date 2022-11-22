@@ -45,7 +45,18 @@ function draw_plot(scene::Scene, screen::Screen, primitive::Combined)
         else
             zvals = Makie.zvalue2d.(primitive.plots)
             for idx in sortperm(zvals)
-                draw_plot(scene, screen, primitive.plots[idx])
+                plot = primitive.plots[idx]
+                if plot isa Makie.Text{<:Tuple{<:Union{AbstractArray{<:AbstractVector}, GeometryBasics.AbstractPoint}}}
+                    for p in plot.plots
+                        if p isa Text{<:Tuple{<:Union{AbstractArray{<:Makie.GlyphCollection}, Makie.GlyphCollection}}}
+                            draw_atomic(scene, screen, p, plot.text)
+                        else
+                            draw_plot(scene, screen, p)
+                        end
+                    end
+                else
+                    draw_plot(scene, screen, plot)
+                end
             end
         end
     end

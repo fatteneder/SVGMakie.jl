@@ -42,3 +42,10 @@ end
 function project_position(scene, space, point, model, yflip::Bool = true)
     project_position(scene, scene.transformation.transform_func[], space, point, model, yflip)
 end
+
+########################################
+#          Rotation handling           #
+########################################
+
+remove_billboard(x) = x
+remove_billboard(b::Makie.Billboard) = b.rotation

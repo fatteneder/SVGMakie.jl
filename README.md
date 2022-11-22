@@ -14,6 +14,8 @@
   https://oreillymedia.github.io/Using_SVG/extras/ch01-XML.html
 - [x] Implement `Lines, LineScatter`.
 - [ ] Fix opacity for `Lines, LineScatter`.
+- [ ] `Lines, Linescatter` seem to be not placed correctly.
+- [ ] Look into the structure of the `.svg` output from `CairoMakie.jl`.
 
 # Resources
 

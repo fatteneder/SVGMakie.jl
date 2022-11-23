@@ -46,7 +46,10 @@ function apply_config!(screen::Screen, config::ScreenConfig)
 end
 
 
-Screen(scene, config::ScreenConfig) = Screen(scene, config, IOBuffer(), SVG())
+function Screen(scene, config::ScreenConfig)
+    w, h = round.(Int, size(scene))
+    Screen(scene, config, IOBuffer(), SVG(width=w, height=h))
+end
 
 
 function Screen(scene::Scene; screen_config...)
@@ -56,7 +59,8 @@ end
 
 
 function Screen(screen::Screen, io::IOBuffer)
-    return Screen(screen.scene, screen.config, io, SVG())
+    w, h = round.(Int, size(screen.scene))
+    return Screen(screen.scene, screen.config, io, SVG(width=w, height=h))
 end
 
 

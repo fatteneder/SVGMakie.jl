@@ -13,8 +13,12 @@
 - [ ] Figure out if XML prologs are of any relevance for us,
   https://oreillymedia.github.io/Using_SVG/extras/ch01-XML.html
 - [x] Implement `Lines, LineScatter`.
-- [ ] Fix opacity for `Lines, LineScatter`.
+- [x] Fix opacity for `Lines, LineScatter`.
 - [ ] `Lines, Linescatter` seem to be not placed correctly.
+  Directly compared the values for the positions with `CairoMakie.jl`.
+  All values agree, but in `SVGMakie.jl` we have one extra LineSegment appearing.
+  That should not be a problem, because it becomes its own `<path>` element, but it is
+  still interesting where this comes from.
 - [x] Look into the structure of the `.svg` output from `CairoMakie.jl`.
   For text: Every glyph is rendered separately with a `<g>` section.
 - [-] Implement basic text support.
@@ -24,6 +28,7 @@
 - [ ] Lines: stroke-linecap = "round" adds a half circle centered at the endpoint of the line.
   How do Cairo and GLMakie handle those? To get it right, we would have to shorten the line by
   half a stroke width on each side.
+- [ ] Limit line lengths of svg output to 255 as suggested in section 8.3. Path in the svg 1.1 specs.
 
 # Resources
 

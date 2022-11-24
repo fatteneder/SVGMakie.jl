@@ -32,7 +32,13 @@ end
 function draw_background(screen::Screen, scene::Scene)
     if scene.clear[]
         bg = scene.backgroundcolor[]
-        screen.svg.fill = svg_color(bg)
+        # svg 1.1 cannot fill a viewBox, so just add a rectangle as the first element and color it
+        rect = Element("rect")
+        rect.width = "100%"
+        rect.height = "100%"
+        rect.fill = svg_color(bg)
+        rect."fill-opacity" = svg_color_alpha(bg)
+        push!(screen.svg, rect)
     end
     foreach(child_scene-> draw_background(screen, child_scene), scene.children)
 end

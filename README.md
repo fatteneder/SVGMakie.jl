@@ -1,7 +1,7 @@
 # SVGMakie
 
 # TODO
-- [-] Understand SVG.
+- [ ] Understand SVG.
 - [x] (Roughly) Figure out what needs to be implemented from Makie.
   - IMO CairoMakie is the backend that is easiest to understand. I will try to mimick this first.
   - Mimiced a project structure similar to CairoMakie.jl
@@ -14,11 +14,13 @@
   https://oreillymedia.github.io/Using_SVG/extras/ch01-XML.html
 - [x] Implement `Lines, LineScatter`.
 - [x] Fix opacity for `Lines, LineScatter`.
-- [ ] `Lines, Linescatter` seem to be not placed correctly.
+- [x] `Lines, Linescatter` seem to be not placed correctly.
   Directly compared the values for the positions with `CairoMakie.jl`.
   All values agree, but in `SVGMakie.jl` we have one extra LineSegment appearing.
   That should not be a problem, because it becomes its own `<path>` element, but it is
   still interesting where this comes from.
+  Problemm was that in `CairoMakie` the coordinate system is translated before drawing
+  inside `prepare_for_scene`, which I somehow had removed from `SVGMakie`.
 - [x] Look into the structure of the `.svg` output from `CairoMakie.jl`.
   For text: Every glyph is rendered separately with a `<g>` section.
 - [-] Implement basic text support.
@@ -29,6 +31,11 @@
   How do Cairo and GLMakie handle those? To get it right, we would have to shorten the line by
   half a stroke width on each side.
 - [ ] Limit line lengths of svg output to 255 as suggested in section 8.3. Path in the svg 1.1 specs.
+- [ ] Implement `Heatmap, Image`.
+- [ ] Implement `Scatter`.
+- [ ] Implement `Mesh`.
+- [ ] Implement `Surface`. In `CairoMakie` this is implemented through `Mesh`.
+- [ ] Implement `MeshScatter`. In `CairoMakie` this is implemented through `Mesh`.
 
 # Resources
 

@@ -7,7 +7,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     fields = @get_attribute(primitive, (color, linewidth, linestyle))
     linestyle = Makie.convert_attribute(linestyle, Makie.key"linestyle"())
 
-    svg = screen.svg
+    svg_el = last(root(screen.svg))
     model = primitive[:model][]
     positions = primitive[1][]
 
@@ -61,7 +61,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
         # stroke the whole line at once if it has only one color
         # this allows correct linestyles and line joins as well and will be the
         # most common case
-        draw_single(primitive, svg, projected_positions, color, linewidth,
+        draw_single(primitive, svg_el, projected_positions, color, linewidth,
                     isnothing(linestyle) ? nothing : diff(Float64.(linestyle)))
     end
 
@@ -251,15 +251,18 @@ function draw_atomic(scene::Scene, screen::Screen,
         @nospecialize(primitive::Text{<:Tuple{<:Union{AbstractArray{<:Makie.GlyphCollection}, Makie.GlyphCollection}}}),
         text_signal)
 
-    svg = screen.svg
+    # svg = screen.svg
+    svg_el = last(root(screen.svg))
     @get_attribute(primitive, (rotation, model, space, markerspace, offset))
-    position = primitive.position[]
+    positions = primitive.position[]
+    space = to_value(get(primitive, :space, :data))
+    projected_positions = project_position.(Ref(scene), Ref(space), positions, Ref(model))
     # use cached glyph info
     glyph_collection = to_value(primitive[1])
     text = text_signal[]
 
     draw_glyph_collection(
-        scene, svg, position, glyph_collection, text, remove_billboard(rotation),
+        scene, svg_el, projected_positions, glyph_collection, text, remove_billboard(rotation),
         model, space, markerspace, offset
     )
 
@@ -310,7 +313,6 @@ function draw_glyph_collection(scene, svg, position, glyph_collection, text,
     end
 
     svg_text = Element("text")
-    h = tryparse(Float32, svg.height)
 
     char_idx = 0
     broadcast_foreach(glyphs, glyphoffsets, fonts, rotations, scales, colors, strokewidths, strokecolors, offsets) do glyph,
@@ -324,7 +326,7 @@ function draw_glyph_collection(scene, svg, position, glyph_collection, text,
         push!(svg_text, tspan)
 
         tspan.x = position[1]+glyphoffset[1]
-        tspan.y = h-(position[2]+glyphoffset[2])
+        tspan.y = position[2]-glyphoffset[2]
 
         # TODO Should we set a fallback font in svg_text?
         if hasproperty(font, :family)

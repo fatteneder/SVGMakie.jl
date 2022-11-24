@@ -13,6 +13,10 @@ function svg_draw(screen::Screen, scene::Scene)
         to_value(get(p, :visible, true)) || continue
         pparent = p.parent::Scene
         pparent.visible[] || continue
+        if pparent != last_scene
+            prepare_for_scene!(screen, pparent)
+            last_scene = pparent
+        end
         draw_plot(pparent, screen, p)
     end
 
@@ -26,6 +30,33 @@ function get_all_plots(scene, plots = AbstractPlot[])
             get_all_plots(c, plots)
         end
     plots
+end
+
+
+function prepare_for_scene!(screen::Screen, scene::Scene)
+
+    # get the root area to correct for its pixel size when translating
+    root_area = Makie.root(scene).px_area[]
+
+    root_area_height = widths(root_area)[2]
+    scene_area = pixelarea(scene)[]
+    scene_height = widths(scene_area)[2]
+    scene_x_origin, scene_y_origin = scene_area.origin
+
+    # we need to translate x by the origin, so distance from the left
+    # but y by the distance from the top, which is not the origin, but can
+    # be calculated using the parent's height, the scene's height and the y origin
+    # this is because y goes downwards in SVG and upwards in Makie
+
+    top_offset = root_area_height - scene_height - scene_y_origin
+
+    g = Element("g")
+    g.transform = "translate($scene_x_origin, $top_offset)"
+    push!(root(screen.svg), g)
+
+    # TODO clip the scene to its pixelarea
+
+    return
 end
 
 

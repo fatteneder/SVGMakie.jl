@@ -310,8 +310,10 @@ function draw_glyph_collection(scene, svg, position, glyph_collection, text,
     end
 
     svg_text = Element("text")
+    h = tryparse(Float32, svg.height)
 
-    broadcast_foreach(glyphs, text, glyphoffsets, fonts, rotations, scales, colors, strokewidths, strokecolors, offsets) do glyph, char,
+    char_idx = 0
+    broadcast_foreach(glyphs, glyphoffsets, fonts, rotations, scales, colors, strokewidths, strokecolors, offsets) do glyph,
         glyphoffset, font, rotation, scale, color, strokewidth, strokecolor, offset
 
         # Not renderable by font (e.g. '\n')
@@ -322,7 +324,7 @@ function draw_glyph_collection(scene, svg, position, glyph_collection, text,
         push!(svg_text, tspan)
 
         tspan.x = position[1]+glyphoffset[1]
-        tspan.y = position[2]+glyphoffset[2]
+        tspan.y = h-(position[2]+glyphoffset[2])
 
         # TODO Should we set a fallback font in svg_text?
         if hasproperty(font, :family)
@@ -360,6 +362,8 @@ function draw_glyph_collection(scene, svg, position, glyph_collection, text,
         xdiff = xproj - glyphpos
         ydiff = yproj - glyphpos
 
+        char_idx = nextind(text, char_idx)
+        char = text[char_idx:nextind(text,char_idx)-1]
         push!(tspan, string(char))
 
         tspan."stroke" = svg_color(strokecolor)

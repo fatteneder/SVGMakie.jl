@@ -227,7 +227,138 @@ end
 ################################################################################
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scatter))
+    fields = @get_attribute(primitive, (color, markersize, strokecolor, strokewidth, marker,
+                                        marker_offset, rotations))
+    @get_attribute(primitive, (transform_marker,))
 
+    svg_el = last(root(screen.svg))
+    model = primitive[:model][]
+    positions = primitive[1][]
+    isempty(positions) && return
+    size_model = transform_marker ? model : Mat4f(I)
+
+    font = to_font(to_value(get(primitive, :font, Makie.defaultfont())))
+
+    colors = if color isa AbstractArray{<: Number}
+        numbers_to_colors(color, primitive)
+    else
+        color
+    end
+
+    markerspace = to_value(get(primitive, :markerspace, :pixel))
+    space = to_value(get(primitive, :space, :data))
+
+    transfunc = scene.transformation.transform_func[]
+
+    marker_conv = _marker_convert(marker)
+
+    draw_atomic_scatter(scene, svg_el, transfunc, colors, markersize, strokecolor, strokewidth,
+                        marker_conv, marker_offset, rotations, model, positions, size_model, font,
+                        markerspace, space)
+end
+
+# an array of markers is converted to string by itself, which is inconvenient for the iteration logic
+_marker_convert(markers::AbstractArray) =
+    map(m -> convert_attribute(m, key"marker"(), key"scatter"()), markers)
+_marker_convert(marker) = convert_attribute(marker, key"marker"(), key"scatter"())
+# image arrays need to be converted as a whole
+_marker_convert(marker::AbstractMatrix{<:Colorant}) =
+    [ convert_attribute(marker, key"marker"(), key"scatter"()) ]
+
+function draw_atomic_scatter(scene, svg_el, transfunc, colors, markersize, strokecolor, strokewidth,
+        marker, marker_offset, rotations, model, positions, size_model, font, markerspace, space)
+
+    broadcast_foreach(positions, colors, markersize, strokecolor,
+            strokewidth, marker, marker_offset, remove_billboard(rotations)) do point, col,
+            markersize, strokecolor, strokewidth, m, mo, rotation
+
+        scale = project_scale(scene, markerspace, markersize, size_model)
+        offset = project_scale(scene, markerspace, mo, size_model)
+
+        pos = project_position(scene, transfunc, space, point, model)
+        isnan(pos) && return
+
+        # TODO Set color
+        # Cairo.set_source_rgba(ctx, rgbatuple(col)...)
+
+        marker_converted = Makie.to_spritemarker(m)
+        # TODO Is this relevant for SVG?
+        # Setting a markersize of 0.0 somehow seems to break Cairos global state?
+        # At least it stops drawing any marker afterwards
+        # TODO(from CairoMakie), maybe there's something wrong somewhere else?
+        if !(norm(scale) ≈ 0.0)
+            if marker_converted isa Char
+                draw_marker(svg_el, marker_converted, best_font(m, font), pos, scale,
+                            strokecolor, strokewidth, offset, rotation)
+            else
+                draw_marker(svg_el, marker_converted, pos, scale, strokecolor, strokewidth,
+                            offset, rotation)
+            end
+        end
+    end
+    return
+end
+
+function draw_marker(svg_el, marker::Char, font, pos, scale, strokecolor, strokewidth,
+        marker_offset, rotation)
+
+    # We place the marker inside a <text> element so that we can then scale it.
+    # We then wrap this into a <g> element which we can then scale, rotate, translate
+    # to our needs independent of the marker's scale.
+    g = Element("g")
+    text = Element("text")
+    push!(g, text)
+    push!(svg_el, g)
+
+    # Marker offset is meant to be relative to the
+    # bottom left corner of the box centered at
+    # `pos` with sides defined by `scale`, but
+    # this does not take the character's dimensions
+    # into account.
+    # Here, we reposition the marker offset to be
+    # relative to the center of the char.
+    marker_offset = marker_offset .+ scale ./ 2
+
+    charextent = Makie.FreeTypeAbstraction.get_extent(font, marker)
+    inkbb = Makie.FreeTypeAbstraction.inkboundingbox(charextent)
+
+    # scale normalized bbox by font size
+    inkbb_scaled = Rect2f(origin(inkbb) .* scale, widths(inkbb) .* scale)
+
+    # flip y for the centering shift of the character because in Cairo y goes down
+    centering_offset = Vec2f(1, -1) .* (-origin(inkbb_scaled) .- 0.5f0 .* widths(inkbb_scaled))
+    # this is the origin where we actually have to place the glyph so it can be centered
+    charorigin = pos .+ Vec2f(marker_offset[1], -marker_offset[2])
+
+    # First, we translate to the point where the
+    # marker is supposed to go.
+    transform = " translate(" * join(charorigin, ",") * ")"
+    # Then, we rotate the context by the
+    # appropriate amount,
+    transform *= " rotate($(to_2d_rotation(rotation)))"
+    # and apply a centering offset to account for
+    # the fact that text is shown from the (relative)
+    # bottom left corner.
+    transform *= " translate(" * join(centering_offset, ",") * ")"
+
+    g.transform = transform
+
+    # TODO Why do we need these ifs and CairoMakie doesn't?
+    if hasproperty(font, :family)
+        text."font-family" = font.family
+    end
+    if hasproperty(font, :style)
+        text."font-style" = font.style
+    end
+
+    push!(text, string(marker))
+    text."stroke-width" = strokewidth
+    text.stroke = svg_color(strokecolor)
+    text.fill = svg_color(strokecolor)
+    text."stroke-opacity" = svg_color_alpha(strokecolor)
+
+    text.transform = "scale($(join(scale, ",")))"
+    text."font-size" = 1
 end
 
 ################################################################################
@@ -329,6 +460,7 @@ function draw_glyph_collection(scene, svg, position, glyph_collection, text,
         tspan.y = position[2]-glyphoffset[2]
 
         # TODO Should we set a fallback font in svg_text?
+        # TODO Why do we need these ifs and CairoMakie doesnt?
         if hasproperty(font, :family)
             tspan."font-family" = font.family
         end

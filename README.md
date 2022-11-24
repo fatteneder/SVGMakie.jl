@@ -23,7 +23,7 @@
   For text: Every glyph is rendered separately with a `<g>` section.
 - [-] Implement basic text support.
   We have text, but its wrongly positioned.
-- [ ] Finish up text.
+- [x] Fix text placement.
 - [x] Add rounded edges for `Lines, LineScatter` strokes.
 - [ ] Lines: stroke-linecap = "round" adds a half circle centered at the endpoint of the line.
   How do Cairo and GLMakie handle those? To get it right, we would have to shorten the line by

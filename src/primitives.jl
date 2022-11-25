@@ -278,8 +278,10 @@ function draw_atomic_scatter(scene, svg_el, transfunc, colors, markersize, strok
         pos = project_position(scene, transfunc, space, point, model)
         isnan(pos) && return
 
-        # TODO Set color
-        # Cairo.set_source_rgba(ctx, rgbatuple(col)...)
+        svg_g = Element("g")
+        svg_g.fill = svg_color(col)
+        svg_g."fill-opacity" = svg_color_alpha(col)
+        push!(svg_el, svg_g)
 
         marker_converted = Makie.to_spritemarker(m)
         # TODO Is this relevant for SVG?
@@ -288,10 +290,10 @@ function draw_atomic_scatter(scene, svg_el, transfunc, colors, markersize, strok
         # TODO(from CairoMakie), maybe there's something wrong somewhere else?
         if !(norm(scale) ≈ 0.0)
             if marker_converted isa Char
-                draw_marker(svg_el, marker_converted, best_font(m, font), pos, scale,
+                draw_marker(svg_g, marker_converted, best_font(m, font), pos, scale,
                             strokecolor, strokewidth, offset, rotation)
             else
-                draw_marker(svg_el, marker_converted, pos, scale, strokecolor, strokewidth,
+                draw_marker(svg_g, marker_converted, pos, scale, strokecolor, strokewidth,
                             offset, rotation)
             end
         end
@@ -354,11 +356,97 @@ function draw_marker(svg_el, marker::Char, font, pos, scale, strokecolor, stroke
     push!(text, string(marker))
     text."stroke-width" = strokewidth
     text.stroke = svg_color(strokecolor)
-    text.fill = svg_color(strokecolor)
-    text."stroke-opacity" = svg_color_alpha(strokecolor)
 
     text.transform = "scale($(join(scale, ",")))"
     text."font-size" = 1
+end
+
+function draw_marker(svg_el, ::Type{<: Circle}, pos, scale, strokecolor, strokewidth,
+        marker_offset, rotation)
+
+    marker_offset = marker_offset + scale ./ 2
+    # TODO How can we test if we need the sign here?
+    pos += Point2f(marker_offset[1], -marker_offset[2])
+
+    marker = if scale[1] != scale[2]
+        ellipse = Element("ellipse")
+        ellipse.cx = pos[1]
+        ellipse.cy = pos[2]
+        ellipse.rx = scale[1]
+        ellipse.ry = scale[2]
+        ellipse
+    else
+        circle = Element("circle")
+        circle.cx = pos[1]
+        circle.cy = pos[2]
+        circle.r = scale[1]/2
+        circle
+    end
+
+    sc = to_color(strokecolor)
+    marker.stroke = svg_color(sc)
+    marker."stroke-opacity" = svg_color_alpha(sc)
+    marker."stroke-width" = strokewidth
+
+    push!(svg_el, marker)
+    return
+end
+
+function draw_marker(svg_el, ::Type{<: Rect}, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
+
+    # TODO How can we test if we need the sign here?
+    pos = pos .+ Point2f(marker_offset[1], -marker_offset[2])
+
+    rect = Element("rect")
+    rect.transform = "rotate($(to_2d_rotation(rotation)))"
+    rect.x = pos[1]
+    rect.y = pos[2]
+    rect.width = scale[1]
+    rect.height = scale[2]
+
+    sc = to_color(strokecolor)
+    rect.stroke = svg_color(sc)
+    rect."stroke-opacity" = svg_color_alpha(sc)
+    rect."stroke-width" = strokewidth
+
+    push!(svg_el, rect)
+    return
+end
+
+function draw_marker(svg_el, beziermarker::BezierPath, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
+
+    path = Element("path")
+    path.transform = "translate($(join(pos, ","))) rotate($(to_2d_rotation(rotation))) " *
+                     "scale($(join(scale .* (1,-1), " ")))"
+
+    path.d = ""
+    draw_path(path, beziermarker)
+
+    sc = to_color(strokecolor)
+    path.stroke = svg_color(sc)
+    path."stroke-opacity" = svg_color_alpha(sc)
+    # TODO: Because we apply a scale trafo above, we need to rescale strokewidth.
+    # But how to do that if strokewidth is a scalar and scale a vector?
+    path."stroke-width" = strokewidth / scale[1]
+
+    push!(svg_el, path)
+    return
+end
+
+draw_path(path, bp::BezierPath) = foreach(x -> path_command(path, x), bp.commands)
+path_command(path, c) = @warn "Command $c not implemented yet"
+path_command(path, c::MoveTo) = path.d *= " M $(join(c.p, " "))"
+path_command(path, c::LineTo) = path.d *= " L $(join(c.p, " "))"
+path_command(path, c::CurveTo) =
+    path.d *= " C $(join(c.c1, " ")), $(join(c.c2, " ")), $(join(c.p, " "))"
+path_command(path, ::ClosePath) = path.d *= " Z"
+function path_command(path, c::EllipticalArc)
+    p2 = Vec2f(c.r1 * cos(c.a2), c.r2 * sin(c.a2))
+    m = Mat2f(cos(c.angle), sin(c.angle), -sin(c.angle), cos(c.angle))
+    p2 = Vec2f(m * p2) .+ c.c
+    sweep_arc = Int64(c.a1 < c.a2)
+    large_arc = Int64(abs(c.a1 - c.a2) > π)
+    path.d *= " A $(c.r1) $(c.r2) $(c.angle) $large_arc $sweep_arc $(join(p2, " "))"
 end
 
 ################################################################################

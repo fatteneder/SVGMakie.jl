@@ -33,6 +33,7 @@
 - [ ] Limit line lengths of svg output to 255 as suggested in section 8.3. Path in the svg 1.1 specs.
 - [ ] Implement `Heatmap, Image`.
 - [ ] Implement `Scatter`.
+  Only image markers left to do.
 - [ ] Implement `Mesh`.
 - [ ] Implement `Surface`. In `CairoMakie` this is implemented through `Mesh`.
 - [ ] Implement `MeshScatter`. In `CairoMakie` this is implemented through `Mesh`.

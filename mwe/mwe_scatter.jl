@@ -20,12 +20,14 @@ circle_with_hole = BezierPath([
     ClosePath(),
 ])
 
-# img = load(Makie.assetpath("doge.png"))
+N = 2
+img = load(Makie.assetpath("doge.png"))[1:4:end,1:4:end]
+imgs = [ img for _ in 1:N ]
 
 f = Figure()
 ax = Axis(f[1,1])
-x = LinRange(-1,1,100)
-s = scatterlines!(ax, x, x.^2, 
+x = LinRange(-1,1,N)
+s = scatterlines!(ax, x, x.^2,
          # marker='x',
          # marker=:rect,
          # strokecolor=:grey,
@@ -33,7 +35,7 @@ s = scatterlines!(ax, x, x.^2,
          strokecolor=:black,
          strokewidth=1,
          # marker=batsymbol,
-         marker=img,
+         marker=imgs,
          # marker=circle_with_hole,
          # marker=:rect,
          # marker=Circle,

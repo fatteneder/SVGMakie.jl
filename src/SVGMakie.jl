@@ -1,5 +1,6 @@
 module SVGMakie
 
+using Base64
 using Makie, LinearAlgebra
 using Colors, GeometryBasics, FileIO
 using XML

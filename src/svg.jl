@@ -5,6 +5,7 @@ function SVG(; version="1.1", width=1000, height=1000)
     svg.height = height
     svg.version = version
     svg.xmlns = "http://www.w3.org/2000/svg"
+    svg."xmlns:xlink" = "http://www.w3.org/1999/xlink"
     push!(root(svg), Element("defs"))
     return svg
 end

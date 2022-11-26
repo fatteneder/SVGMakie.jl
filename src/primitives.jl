@@ -449,6 +449,30 @@ function path_command(path, c::EllipticalArc)
     path.d *= " A $(c.r1) $(c.r2) $(c.angle) $large_arc $sweep_arc $(join(p2, " "))"
 end
 
+function draw_marker(svg_el, marker::Matrix{T}, pos, scale,
+        strokecolor #= unused =#, strokewidth #= unused =#,
+        marker_offset, rotation) where T<:Colorant
+
+    # convert marker to Cairo compatible image data
+    argb32_marker = convert.(ARGB32, marker)
+    argb32_marker = permutedims(argb32_marker, (2,1)) # swap x-y for Cairo
+    encoded_marker = base64encode(argb32_marker)
+
+    w, h = size(argb32_marker)
+
+    img = Element("image")
+    img.width = w
+    img.height = h
+    img.transform =  "translate($(join(scale ./ 2 .+ pos .+ marker_offset, ","))) "
+    img.transform *= "rotate($(to_2d_rotation(rotation))) "
+    img.transform *= "scale($(join(Vec2f(scale ./ (w, h)), ",")))"
+    # img."xlink:href" = "data:image/png;base64,$encoded_marker"
+    img."xlink:href"="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg=="
+
+
+    push!(svg_el, img)
+end
+
 ################################################################################
 #                                     Text                                     #
 ################################################################################

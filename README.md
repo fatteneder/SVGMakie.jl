@@ -30,7 +30,7 @@
   How do Cairo and GLMakie handle those? To get it right, we would have to shorten the line by
   half a stroke width on each side.
 - [ ] Limit line lengths of svg output to 255 as suggested in section 8.3. Path in the svg 1.1 specs.
-- [ ] Implement `Heatmap, Image`.
+- [x] Implement `Heatmap, Image`.
 - [x] Implement `Scatter`.
 - [ ] Implement `Mesh`.
 - [ ] Implement `Surface`. In `CairoMakie` this is implemented through `Mesh`.

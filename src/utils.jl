@@ -91,6 +91,42 @@ to_2d_rotation(vec::Vec2f) = atan(vec[1], vec[2])
 
 to_2d_rotation(n::Real) = n
 
+################################################################################
+#                                Color handling                                #
+################################################################################
+
+########################################
+#     Image/heatmap -> ARGBSurface     #
+########################################
+
+function to_rgba_image(img::AbstractMatrix{<: AbstractFloat}, attributes)
+    Makie.@get_attribute attributes (colormap, colorrange, nan_color, lowclip, highclip)
+
+    nan_color = Makie.to_color(nan_color)
+    lowclip = isnothing(lowclip) ? lowclip : Makie.to_color(lowclip)
+    highclip = isnothing(highclip) ? highclip : Makie.to_color(highclip)
+
+    [get_rgba_pixel(pixel, colormap, colorrange, nan_color, lowclip, highclip) for pixel in img]
+end
+
+to_rgba_image(img::AbstractMatrix{<: Colorant}, attributes) = RGBAf.(img)
+
+function get_rgba_pixel(pixel, colormap, colorrange, nan_color, lowclip, highclip)
+    vmin, vmax = colorrange
+    if isnan(pixel)
+        RGBAf(nan_color)
+    elseif pixel < vmin && !isnothing(lowclip)
+        RGBAf(lowclip)
+    elseif pixel > vmax && !isnothing(highclip)
+        RGBAf(highclip)
+    else
+        RGBAf(Makie.interpolated_getindex(colormap, pixel, colorrange))
+    end
+end
+
+################################################################################
+#                                Mesh handling                                 #
+################################################################################
 
 """
 Finds a font that can represent the unicode character!

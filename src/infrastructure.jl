@@ -57,7 +57,7 @@ function prepare_for_scene!(screen::Screen, scene::Scene)
     rect = Element("rect")
     top_left_corner = coordinates(scene_area) |> first
     rect.x = top_left_corner[1] - scene_x_origin
-    rect.y = top_left_corner[2] - top_offset
+    rect.y = top_left_corner[2] - scene_y_origin
     rect.width = scene_width
     rect.height = scene_height
     push!(clip, rect)

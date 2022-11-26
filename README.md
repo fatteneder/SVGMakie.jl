@@ -23,8 +23,7 @@
   inside `prepare_for_scene`, which I somehow had removed from `SVGMakie`.
 - [x] Look into the structure of the `.svg` output from `CairoMakie.jl`.
   For text: Every glyph is rendered separately with a `<g>` section.
-- [-] Implement basic text support.
-  We have text, but its wrongly positioned.
+- [x Implement basic text support.
 - [x] Fix text placement.
 - [x] Add rounded edges for `Lines, LineScatter` strokes.
 - [ ] Lines: stroke-linecap = "round" adds a half circle centered at the endpoint of the line.
@@ -32,11 +31,19 @@
   half a stroke width on each side.
 - [ ] Limit line lengths of svg output to 255 as suggested in section 8.3. Path in the svg 1.1 specs.
 - [ ] Implement `Heatmap, Image`.
-- [ ] Implement `Scatter`.
-  Only image markers left to do.
+- [x] Implement `Scatter`.
 - [ ] Implement `Mesh`.
 - [ ] Implement `Surface`. In `CairoMakie` this is implemented through `Mesh`.
 - [ ] Implement `MeshScatter`. In `CairoMakie` this is implemented through `Mesh`.
+- [ ] Optimize SVG output.
+  - Limit line length to 255 chars (recommended by W3).
+  - Remove superficial white spaces in commands.
+  - Trim nr of significant digits to a minimum.
+  - Avoid duplication of embeded images and markers.
+- [ ] Make `display(fig)` work.
+  Atm we have to set `Makie.ALWAYS_INLINE_PLOTS[] = false` and use
+  `Makie.display(f; backend=SVGMakie)`.
+- [ ] Setup `save(filename, fig)`. Atm we always write to `/tmp/svgmakie.svg`.
 
 # Resources
 

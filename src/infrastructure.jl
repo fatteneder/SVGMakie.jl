@@ -40,7 +40,7 @@ function prepare_for_scene!(screen::Screen, scene::Scene)
 
     root_area_height = widths(root_area)[2]
     scene_area = pixelarea(scene)[]
-    scene_height = widths(scene_area)[2]
+    scene_width, scene_height = widths(scene_area)
     scene_x_origin, scene_y_origin = scene_area.origin
 
     # we need to translate x by the origin, so distance from the left
@@ -50,11 +50,26 @@ function prepare_for_scene!(screen::Screen, scene::Scene)
 
     top_offset = root_area_height - scene_height - scene_y_origin
 
+    # clip to the scene's area
+    id = "$(string(UUIDs.uuid1()))"
+    clip = Element("clipPath")
+    clip.id = id
+    rect = Element("rect")
+    top_left_corner = coordinates(scene_area) |> first
+    rect.x = top_left_corner[1] - scene_x_origin
+    rect.y = top_left_corner[2] - top_offset
+    rect.width = scene_width
+    rect.height = scene_height
+    push!(clip, rect)
+    push!(defs(screen.svg), clip)
+
+    # following drawing commands are to be wrapped inside a <g> element that takes care of
+    # translation and clipping of the scene
     g = Element("g")
     g.transform = "translate($scene_x_origin, $top_offset)"
+    g."clip-path" = "url(#$id)"
+    g."clip-rule" = "nonzero"
     push!(root(screen.svg), g)
-
-    # TODO clip the scene to its pixelarea
 
     return
 end

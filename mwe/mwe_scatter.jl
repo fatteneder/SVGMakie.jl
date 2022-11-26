@@ -21,8 +21,11 @@ circle_with_hole = BezierPath([
 ])
 
 N = 2
-img = load(Makie.assetpath("doge.png"))[1:4:end,1:4:end]
+# img = load(Makie.assetpath("doge.png"))[1:4:end,1:4:end]
+img = load(Makie.assetpath("logo.png"))
 imgs = [ img for _ in 1:N ]
+
+w, h = size(rotr90(img))
 
 f = Figure()
 ax = Axis(f[1,1])
@@ -41,8 +44,10 @@ s = scatterlines!(ax, x, x.^2,
          # marker=Circle,
          # marker=Rect,
          # markersize=15 .* (1.0, 0.5))
-         markersize=5)
+         # markersize=100)
+         markersize=(100,100*h/w))
          # markersize=35)
+# s = scatterlines!(ax, 1, 1, markers=[img])#, markersize=(500,500*h/w))
 
 
 # Why do I have to pass on the backend?

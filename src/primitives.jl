@@ -453,24 +453,27 @@ function draw_marker(svg_el, marker::Matrix{T}, pos, scale,
         strokecolor #= unused =#, strokewidth #= unused =#,
         marker_offset, rotation) where T<:Colorant
 
-    # convert marker to Cairo compatible image data
-    argb32_marker = convert.(ARGB32, marker)
-    argb32_marker = permutedims(argb32_marker, (2,1)) # swap x-y for Cairo
-    encoded_marker = base64encode(argb32_marker)
+    # convert marker to PNG file format and then base64 encode it
+    stream = Stream{format"PNG"}(IOBuffer())
+    save(stream, marker)
+    encoded_marker = base64encode(take!(stream.io))
 
-    w, h = size(argb32_marker)
+    w, h = size(marker)
 
-    img = Element("image")
-    img.width = w
-    img.height = h
-    img.transform =  "translate($(join(scale ./ 2 .+ pos .+ marker_offset, ","))) "
-    img.transform *= "rotate($(to_2d_rotation(rotation))) "
-    img.transform *= "scale($(join(Vec2f(scale ./ (w, h)), ",")))"
-    # img."xlink:href" = "data:image/png;base64,$encoded_marker"
-    img."xlink:href"="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg=="
+    image = Element("image")
+    image.width = scale[1]
+    image.height = scale[2]
+    image.x = pos[1] + marker_offset[1]
+    image.y = pos[2] + marker_offset[2]
+    image.transform = "rotate($(to_2d_rotation(rotation))) "
+    image."xlink:href" = "data:image/png;base64,$encoded_marker"
 
+    # needed to make markersize behavior consistent with CairoMakie, GLMakie:
+    # markersize=100 -> marker is strechted to fill 100x100 pxs
+    # markersize=(100,100*h/w) -> marker width is 100 and aspect is preserved
+    image.preserveAspectRatio = "none"
 
-    push!(svg_el, img)
+    push!(svg_el, image)
 end
 
 ################################################################################

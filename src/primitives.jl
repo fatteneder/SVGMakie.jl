@@ -661,13 +661,12 @@ premultiplied_rgba(a::AbstractArray{<:Color}) = RGBA.(a)
 premultiplied_rgba(r::RGBA) = RGBA(r.r * r.alpha, r.g * r.alpha, r.b * r.alpha, r.alpha)
 premultiplied_rgba(c::Colorant) = premultiplied_rgba(RGBA(c))
 
-function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Union{Heatmap, Image}))
+function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Heatmap))
 
     svg_el = last(root(screen.svg))
     image = primitive[3][]
     xs, ys = primitive[1][], primitive[2][]
     model = primitive.model[]::Mat4f
-    interpolate = to_value(primitive.interpolate)
 
     # Compared to Cairo, we removed the fast_path branch below, because SVG is always
     # a vector backend. However, using a Colorbar now hits the
@@ -681,20 +680,6 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     l, r = extrema(ys)
     N = size(image, 2)
     ys = range(l, r, length = N+1)
-
-    t = Makie.transform_func_obs(primitive)[]
-    identity_transform =
-        (t === identity || t isa Tuple && all(x-> x === identity, t)) && (abs(model[1, 2]) < 1e-15)
-
-    regular_grid = xs isa AbstractRange && ys isa AbstractRange
-    if interpolate
-        if !regular_grid
-            error("$(typeof(primitive).parameters[1]) with interpolate = true with a non-regular grid is not supported right now.")
-        end
-        if !identity_transform
-            error("$(typeof(primitive).parameters[1]) with interpolate = true with a non-identity transform is not supported right now.")
-        end
-    end
 
     imsize = ((first(xs), last(xs)), (first(ys), last(ys)))
     # find projected image corners
@@ -748,6 +733,47 @@ function _draw_rect_heatmap(svg_el, xys, ni, nj, colors)
 
         push!(svg_el, path)
     end
+end
+
+function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Image))
+
+    svg_el = last(root(screen.svg))
+    image = primitive[3][]
+    xs, ys = primitive[1][], primitive[2][]
+    model = primitive.model[]::Mat4f
+
+    # TODO Need to rotate to be consistent with other backends.
+    # This is weird, because for an up-right picture the user now has to call image(rotr90(img))
+    # and here we undo it again ... see #389, #205.
+    image = rotl90(image)
+    iw, ih = size(image)
+
+    imsize = ((first(xs), last(xs)), (first(ys), last(ys)))
+    # find projected image corners
+    # this already takes care of flipping the image to correct cairo orientation
+    space = to_value(get(primitive, :space, :data))
+    xy = project_position(scene, space, Point2f(first.(imsize)), model)
+    xymax = project_position(scene, space, Point2f(last.(imsize)), model)
+    w, h = xymax[1] - xy[1], xy[2] - xymax[2]
+
+    # convert image to PNG file format and then base64 encode it
+    stream = Stream{format"PNG"}(IOBuffer())
+    save(stream, image)
+    encoded_image = base64encode(take!(stream.io))
+
+    image = Element("image")
+    image.width = w
+    image.height = h
+    image.x = xs[1]
+    image.y = xymax[2]
+    # TODO How to apply rotatation? I think that is not support in any of the backends either.
+    # image.transform = "rotate($(to_2d_rotation(rotation))) "
+    image."xlink:href" = "data:image/png;base64,$encoded_image"
+
+    # display aspect ratio preservation
+    image.preserveAspectRatio = "none"
+
+    push!(svg_el, image)
 end
 
 ################################################################################

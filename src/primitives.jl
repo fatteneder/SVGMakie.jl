@@ -770,7 +770,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Imag
     # image.transform = "rotate($(to_2d_rotation(rotation))) "
     image."xlink:href" = "data:image/png;base64,$encoded_image"
 
-    # display aspect ratio preservation
+    # disable aspect ratio preservation
     image.preserveAspectRatio = "none"
 
     push!(svg_el, image)
@@ -883,31 +883,49 @@ function draw_mesh2D(scene, screen, per_face_cols, space::Symbol,
         vs::Vector{Point2f}, fs::Vector{GLTriangleFace}, model::Mat4f)
 
     svg_el = last(root(screen.svg))
+    svg_defs = defs(screen.svg)
 
-    # raster resolution
-    Nx, Ny = 100, 100
-
-    # svg_el = last(root(screen.svg))
-    #
     for (f, (c1, c2, c3)) in zip(fs, per_face_cols)
 
         t1, t2, t3 =  project_position.(scene, space, vs[f], (model,)) #triangle points
 
+        # Triangle that are directly adjacent show white lines between, because the rasterized
+        # images don't touch exactly. Here we artificially stretch the triangle's vertices
+        # outwards (from each other) and use those for clipping the mesh image.
+        # Stretching is done along the line that connects a vertex and the center of its
+        # opposing triangle edge.
+        # vector connecting a corner with an opposing edge's center
+        s1 = Vec2f(@. t2 + (t3 - t2) / 2)
+        s2 = Vec2f(@. t1 + (t3 - t1) / 2)
+        s3 = Vec2f(@. t1 + (t2 - t1) / 2)
+        # vector connecting vertex and opposing edge
+        u1 = Vec2f(@. t1 - s1)
+        u2 = Vec2f(@. t2 - s2)
+        u3 = Vec2f(@. t3 - s3)
+        s = 0.005 # strech factor
+        # stretched vertices
+        v1 = Vec2f(@. t1 + s * u1)
+        v2 = Vec2f(@. t2 + s * u2)
+        v3 = Vec2f(@. t3 + s * u3)
+
+
+        # rasterize a mesh gradient
         xmin = min(t1[1], t2[1], t3[1])
         xmax = max(t1[1], t2[1], t3[1])
         ymin = min(t1[2], t2[2], t3[2])
         ymax = max(t1[2], t2[2], t3[2])
-
         w = xmax - xmin
         h = ymax - ymin
-
-        # rastering size
+        # TODO Raster resolution should be a parameter and given by px_per_units in screen space.
+        # raster resolution
+        Nx, Ny = 25, 25
         dxdy = Vec2f(w/(Nx-1), h/(Ny-1))
         # origin
         o = Vec2f(xmin, ymin)
 
-        # WIP
-        # determine sizes of a rectangle that aligns with one edge with the longest triangle side
+        # TODO: Optimization: Keep the rasterized mesh as small as possible by aligning the
+        # longest triangle side with the side of the raster. We would then have to
+        # rotate the raster below.
         # d12 = Vec2f(t2 .- t1)
         # d13 = Vec2f(t3 .- t1)
         # d23 = Vec2f(t3 .- t2)
@@ -920,27 +938,37 @@ function draw_mesh2D(scene, screen, per_face_cols, space::Symbol,
         # r1, r2, r3 = rot * (t1 - dd), rot * (t2 - dd), rot * (t3 - dd)
 
         color_matrix = zeros(RGBAf, (Nx, Ny))
-        println("sers")
         for ix = 1:Nx, iy = 1:Ny
             p = dxdy .* Vec2f(ix-1, iy-1) .+ o
-            # println(t1, ", ", t2, ", ", t3, ", ", p)
-            !is_inside_triangle(t1, t2, t3, p) && continue
-            # println("JUHHHUUU")
-            # println(p)
             w1, w2, w3 = barycentric_weights_triangle(t1, t2, t3, p)
             color = RGBAf( w1*c1.r + w2*c2.r + w3*c3.r,
                            w1*c1.g + w2*c2.g + w3*c3.g,
                            w1*c1.b + w2*c2.b + w3*c3.b,
                            w1*c1.alpha + w2*c2.alpha + w3*c3.alpha )
+            if !is_inside_triangle(t1, t2, t3, p)
+                # sanitize color if we 'extrapolated'
+                r = max(min(color.r, 1.0), 0.0)
+                g = max(min(color.g, 1.0), 0.0)
+                b = max(min(color.b, 1.0), 0.0)
+                alpha = max(min(color.alpha, 1.0), 0.0)
+                color = RGBAf(r, g, b, alpha)
+            end
             color_matrix[ix,iy] = color
         end
-
-        # println(color_matrix)
 
         # convert image to PNG file format and then base64 encode it
         stream = Stream{format"PNG"}(IOBuffer())
         save(stream, color_matrix)
         encoded_image = base64encode(take!(stream.io))
+
+        # apply a clip with the stretched vertices to get a (transparent) triangle
+        id = "$(string(UUIDs.uuid1()))"
+        clip = Element("clipPath")
+        clip.id = id
+        path = Element("path")
+        path.d = "M $(join(v1,",")) L $(join(v2,",")) L $(join(v3,",")) Z"
+        push!(clip, path)
+        push!(svg_defs, clip)
 
         image = Element("image")
         image.width = w
@@ -948,13 +976,15 @@ function draw_mesh2D(scene, screen, per_face_cols, space::Symbol,
         image.x = xmin
         image.y = ymin
         image."xlink:href" = "data:image/png;base64,$encoded_image"
-
-        # display aspect ratio preservation
+        image."clip-path" = "url(#$id)"
+        image."clip-rule" = "nonzero"
+        # disable aspect ratio preservation
         image.preserveAspectRatio = "none"
 
         push!(svg_el, image)
     end
 
+    return
 end
 
 # function average_z(positions, face)

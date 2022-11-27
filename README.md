@@ -46,7 +46,7 @@ Very experimental. See `mwe/` for (hopefully) working examples.
   Atm we have to set `Makie.ALWAYS_INLINE_PLOTS[] = false` and use
   `Makie.display(f; backend=SVGMakie)`.
 - [ ] Setup `save(filename, fig)`. Atm we always write to `/tmp/svgmakie.svg`.
-- [ ] Fix `text!` which shows nothing.
+- [x] Fix `text!` which shows nothing.
 - [ ] Optimize rastered mesh gradients, e.g. reduce the rasters size.
 - [ ] Convert `mwe/mwe_pts.jl` into unit tests.
 - [ ] Implement `AbstractPattern` using `<pattern>`.

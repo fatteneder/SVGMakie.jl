@@ -801,15 +801,6 @@ function is_inside_triangle(p1, p2, p3, q)
 
     d = p2 .- p1
     alpha = angle_align_upwards(d)
-    # alpha = if isapprox(d[1], 0)
-    #     d[2] > 0 ? 0 : -pi
-    # elseif isapprox(d[2], 0)
-    #     d[1] > 0 ? pi/2 : -pi/2
-    # else
-    #     # println(d[1] > 0 ? "pos" : "neg")
-    #     a = pi/2 - atan(d[2], d[1])
-    #     d[1] > 0 ? a : -a
-    # end
     rot = Mat2f(cos(alpha), sin(alpha), -sin(alpha), cos(alpha))
 
     up = rot * d
@@ -817,9 +808,6 @@ function is_inside_triangle(p1, p2, p3, q)
     qq = rot * (q .- p1)
 
     # qq and r3 lie on opposite sites
-    # println("signs")
-    # display(qq[1])
-    # display(r3[1])
     qq[1] * r3[1] < 0 && return false
 
     # bring both to positive side
@@ -830,12 +818,6 @@ function is_inside_triangle(p1, p2, p3, q)
     slope_23 = (r3[2] - up[2]) / r3x
     slope_1qq = qq[2] / qqx
     slope_2qq = (qq[2] - up[2]) / qqx
-
-    # println("slopes")
-    # println(slope_13)
-    # println(slope_23)
-    # println(slope_1qq)
-    # println(slope_2qq)
 
     return slope_1qq > slope_13 && slope_2qq < slope_23
 end

@@ -929,178 +929,214 @@ function draw_mesh2D(scene, screen, per_face_cols, space::Symbol,
     return
 end
 
-# function average_z(positions, face)
-#     vs = positions[face]
-#     sum(v -> v[3], vs) / length(vs)
-# end
-#
-# nan2zero(x) = !isnan(x) * x
-#
-#
-# function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f0)
-#     # Priorize colors of the mesh if present
-#     @get_attribute(attributes, (color,))
-#
-#     colormap = haskey(attributes, :colormap) ? to_colormap(attributes.colormap[]) : nothing
-#     colorrange = convert_attribute(to_value(get(attributes, :colorrange, nothing)), key"colorrange"())::Union{Nothing, Vec2f}
-#     matcap = to_value(get(attributes, :matcap, nothing))
-#
-#     color = hasproperty(mesh, :color) ? mesh.color : color
-#     meshpoints = decompose(Point3f, mesh)::Vector{Point3f}
-#     meshfaces = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
-#     meshnormals = decompose_normals(mesh)::Vector{Vec3f}
-#     meshuvs = texturecoordinates(mesh)::Union{Nothing, Vector{Vec2f}}
-#
-#     lowclip = get_color_attr(attributes, :lowclip)
-#     highclip = get_color_attr(attributes, :highclip)
-#     nan_color = get_color_attr(attributes, :nan_color)
-#
-#     per_face_col = per_face_colors(
-#         color, colormap, colorrange, matcap, meshfaces, meshnormals, meshuvs,
-#         lowclip, highclip, nan_color
-#     )
-#
-#     @get_attribute(attributes, (shading, diffuse,
-#         specular, shininess, faceculling))
-#
-#     model = attributes.model[]::Mat4f
-#     space = to_value(get(attributes, :space, :data))::Symbol
-#
-#     draw_mesh3D(
-#         scene, screen, space, meshpoints, meshfaces, meshnormals, per_face_col, pos, scale,
-#         model, shading::Bool, diffuse::Vec3f,
-#         specular::Vec3f, shininess::Float32, faceculling::Int
-#     )
-# end
-#
-# function draw_mesh3D(
-#         scene, screen, space, meshpoints, meshfaces, meshnormals, per_face_col, pos, scale,
-#         model, shading, diffuse,
-#         specular, shininess, faceculling
-#     )
-#     ctx = screen.context
-#     view = ifelse(is_data_space(space), scene.camera.view[], Mat4f(I))
-#     projection = Makie.space_to_clip(scene.camera, space, false)
-#     i = Vec(1, 2, 3)
-#     normalmatrix = transpose(inv(view[i, i] * model[i, i]))
-#
-#     # Mesh data
-#     # transform to view/camera space
-#     func = Makie.transform_func_obs(scene)[]
-#     # pass func as argument to function, so that we get a function barrier
-#     # and have `func` be fully typed inside closure
-#     vs = broadcast(meshpoints, (func,)) do v, f
-#         # Should v get a nan2zero?
-#         v = Makie.apply_transform(f, v)
-#         p4d = to_ndim(Vec4f, scale .* to_ndim(Vec3f, v, 0f0), 1f0)
-#         view * (model * p4d .+ to_ndim(Vec4f, pos, 0f0))
-#     end
-#
-#     ns = map(n -> normalize(normalmatrix * n), meshnormals)
-#     # Liight math happens in view/camera space
-#     pointlight = Makie.get_point_light(scene)
-#     lightposition = if !isnothing(pointlight)
-#         pointlight.position[]
-#     else
-#         Vec3f(0)
-#     end
-#
-#     ambientlight = Makie.get_ambient_light(scene)
-#     ambient = if !isnothing(ambientlight)
-#         c = ambientlight.color[]
-#         Vec3f(c.r, c.g, c.b)
-#     else
-#         Vec3f(0)
-#     end
-#
-#     lightpos = (view * to_ndim(Vec4f, lightposition, 1.0))[Vec(1, 2, 3)]
-#
-#     # Camera to screen space
-#     ts = map(vs) do v
-#         clip = projection * v
-#         @inbounds begin
-#             p = (clip ./ clip[4])[Vec(1, 2)]
-#             p_yflip = Vec2f(p[1], -p[2])
-#             p_0_to_1 = (p_yflip .+ 1f0) ./ 2f0
-#         end
-#         p = p_0_to_1 .* scene.camera.resolution[]
-#         return Vec3f(p[1], p[2], clip[3])
-#     end
-#
-#     # Approximate zorder
-#     average_zs = map(f -> average_z(ts, f), meshfaces)
-#     zorder = sortperm(average_zs)
-#
-#     # Face culling
-#     zorder = filter(i -> any(last.(ns[meshfaces[i]]) .> faceculling), zorder)
-#
-#     draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightpos, shininess, diffuse, ambient, specular)
-#     return
-# end
-#
-# function _calculate_shaded_vertexcolors(N, v, c, lightpos, ambient, diffuse, specular, shininess)
-#     L = normalize(lightpos .- v[Vec(1,2,3)])
-#     diff_coeff = max(dot(L, N), 0f0)
-#     H = normalize(L + normalize(-v[Vec(1, 2, 3)]))
-#     spec_coeff = max(dot(H, N), 0f0)^shininess
-#     c = RGBAf(c)
-#     # if this is one expression it introduces allocations??
-#     new_c_part1 = (ambient .+ diff_coeff .* diffuse) .* Vec3f(c.r, c.g, c.b) #.+
-#     new_c = new_c_part1 .+ specular * spec_coeff
-#     RGBAf(new_c..., c.alpha)
-# end
-#
-# function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightpos, shininess, diffuse, ambient, specular)
-#     pattern = Cairo.CairoPatternMesh()
-#
-#     for k in reverse(zorder)
-#         f = meshfaces[k]
-#         # avoid SizedVector through Face indexing
-#         t1 = ts[f[1]]
-#         t2 = ts[f[2]]
-#         t3 = ts[f[3]]
-#
-#         facecolors = per_face_col[k]
-#         # light calculation
-#         if shading
-#             c1, c2, c3 = Base.Cartesian.@ntuple 3 i -> begin
-#                 # these face index expressions currently allocate for SizedVectors
-#                 # if done like `ns[f]`
-#                 N = ns[f[i]]
-#                 v = vs[f[i]]
-#                 c = facecolors[i]
-#                 _calculate_shaded_vertexcolors(N, v, c, lightpos, ambient, diffuse, specular, shininess)
-#             end
-#         else
-#             c1, c2, c3 = facecolors
-#         end
-#
-#         # debug normal coloring
-#         # n1, n2, n3 = Vec3f(0.5) .+ 0.5ns[f]
-#         # c1 = RGB(n1...)
-#         # c2 = RGB(n2...)
-#         # c3 = RGB(n3...)
-#
-#         Cairo.mesh_pattern_begin_patch(pattern)
-#
-#         Cairo.mesh_pattern_move_to(pattern, t1[1], t1[2])
-#         Cairo.mesh_pattern_line_to(pattern, t2[1], t2[2])
-#         Cairo.mesh_pattern_line_to(pattern, t3[1], t3[2])
-#
-#         mesh_pattern_set_corner_color(pattern, 0, c1)
-#         mesh_pattern_set_corner_color(pattern, 1, c2)
-#         mesh_pattern_set_corner_color(pattern, 2, c3)
-#
-#         Cairo.mesh_pattern_end_patch(pattern)
-#     end
-#     Cairo.set_source(ctx, pattern)
-#     Cairo.close_path(ctx)
-#     Cairo.paint(ctx)
-# end
+function average_z(positions, face)
+    vs = positions[face]
+    sum(v -> v[3], vs) / length(vs)
+end
+
+nan2zero(x) = !isnan(x) * x
+
+
+function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f0)
+    # Priorize colors of the mesh if present
+    @get_attribute(attributes, (color,))
+
+    colormap = haskey(attributes, :colormap) ? to_colormap(attributes.colormap[]) : nothing
+    colorrange = convert_attribute(
+        to_value(get(attributes, :colorrange, nothing)), key"colorrange"())::Union{Nothing, Vec2f}
+    matcap = to_value(get(attributes, :matcap, nothing))
+
+    color = hasproperty(mesh, :color) ? mesh.color : color
+    meshpoints = decompose(Point3f, mesh)::Vector{Point3f}
+    meshfaces = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
+    meshnormals = decompose_normals(mesh)::Vector{Vec3f}
+    meshuvs = texturecoordinates(mesh)::Union{Nothing, Vector{Vec2f}}
+
+    lowclip = get_color_attr(attributes, :lowclip)
+    highclip = get_color_attr(attributes, :highclip)
+    nan_color = get_color_attr(attributes, :nan_color)
+
+    per_face_col = per_face_colors(
+        color, colormap, colorrange, matcap, meshfaces, meshnormals, meshuvs,
+        lowclip, highclip, nan_color
+    )
+
+    @get_attribute(attributes, (shading, diffuse,
+        specular, shininess, faceculling))
+
+    model = attributes.model[]::Mat4f
+    space = to_value(get(attributes, :space, :data))::Symbol
+
+    draw_mesh3D(
+        scene, screen, space, meshpoints, meshfaces, meshnormals, per_face_col, pos, scale,
+        model, shading::Bool, diffuse::Vec3f,
+        specular::Vec3f, shininess::Float32, faceculling::Int
+    )
+end
+
+function draw_mesh3D(
+        scene, screen, space, meshpoints, meshfaces, meshnormals, per_face_col, pos, scale,
+        model, shading, diffuse,
+        specular, shininess, faceculling
+    )
+
+    svg = screen.svg
+    view = ifelse(is_data_space(space), scene.camera.view[], Mat4f(I))
+    projection = Makie.space_to_clip(scene.camera, space, false)
+    i = Vec(1, 2, 3)
+    normalmatrix = transpose(inv(view[i, i] * model[i, i]))
+
+    # Mesh data
+    # transform to view/camera space
+    func = Makie.transform_func_obs(scene)[]
+    # pass func as argument to function, so that we get a function barrier
+    # and have `func` be fully typed inside closure
+    vs = broadcast(meshpoints, (func,)) do v, f
+        # Should v get a nan2zero?
+        v = Makie.apply_transform(f, v)
+        p4d = to_ndim(Vec4f, scale .* to_ndim(Vec3f, v, 0f0), 1f0)
+        view * (model * p4d .+ to_ndim(Vec4f, pos, 0f0))
+    end
+
+    ns = map(n -> normalize(normalmatrix * n), meshnormals)
+    # Light math happens in view/camera space
+    pointlight = Makie.get_point_light(scene)
+    lightposition = if !isnothing(pointlight)
+        pointlight.position[]
+    else
+        Vec3f(0)
+    end
+
+    ambientlight = Makie.get_ambient_light(scene)
+    ambient = if !isnothing(ambientlight)
+        c = ambientlight.color[]
+        Vec3f(c.r, c.g, c.b)
+    else
+        Vec3f(0)
+    end
+
+    lightpos = (view * to_ndim(Vec4f, lightposition, 1.0))[Vec(1, 2, 3)]
+
+    # Camera to screen space
+    ts = map(vs) do v
+        clip = projection * v
+        @inbounds begin
+            p = (clip ./ clip[4])[Vec(1, 2)]
+            p_yflip = Vec2f(p[1], -p[2])
+            p_0_to_1 = (p_yflip .+ 1f0) ./ 2f0
+        end
+        p = p_0_to_1 .* scene.camera.resolution[]
+        return Vec3f(p[1], p[2], clip[3])
+    end
+
+    # Approximate zorder
+    average_zs = map(f -> average_z(ts, f), meshfaces)
+    zorder = sortperm(average_zs)
+
+    # Face culling
+    zorder = filter(i -> any(last.(ns[meshfaces[i]]) .> faceculling), zorder)
+
+    draw_pattern(svg, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightpos,
+                 shininess, diffuse, ambient, specular)
+    return
+end
+
+function _calculate_shaded_vertexcolors(N, v, c, lightpos, ambient, diffuse, specular, shininess)
+    L = normalize(lightpos .- v[Vec(1,2,3)])
+    diff_coeff = max(dot(L, N), 0f0)
+    H = normalize(L + normalize(-v[Vec(1, 2, 3)]))
+    spec_coeff = max(dot(H, N), 0f0)^shininess
+    c = RGBAf(c)
+    # if this is one expression it introduces allocations??
+    new_c_part1 = (ambient .+ diff_coeff .* diffuse) .* Vec3f(c.r, c.g, c.b) #.+
+    new_c = new_c_part1 .+ specular * spec_coeff
+    RGBAf(new_c..., c.alpha)
+end
+
+function draw_pattern(svg, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightpos,
+        shininess, diffuse, ambient, specular)
+
+    svg_el = last(root(svg))
+    svg_defs = defs(svg)
+
+    for k in reverse(zorder)
+        f = meshfaces[k]
+        # avoid SizedVector through Face indexing
+        tt1 = ts[f[1]]
+        tt2 = ts[f[2]]
+        tt3 = ts[f[3]]
+
+        facecolors = per_face_col[k]
+        # light calculation
+        if shading
+            c1, c2, c3 = Base.Cartesian.@ntuple 3 i -> begin
+                # these face index expressions currently allocate for SizedVectors
+                # if done like `ns[f]`
+                N = ns[f[i]]
+                v = vs[f[i]]
+                c = facecolors[i]
+                _calculate_shaded_vertexcolors(N, v, c, lightpos, ambient, diffuse, specular, shininess)
+            end
+        else
+            c1, c2, c3 = facecolors
+        end
+
+        # debug normal coloring
+        # n1, n2, n3 = Vec3f(0.5) .+ 0.5ns[f]
+        # c1 = RGB(n1...)
+        # c2 = RGB(n2...)
+        # c3 = RGB(n3...)
+
+        t1, t2, t3 = Vec2f(tt1[1],tt1[2]), Vec2f(tt2[1],tt2[2]), Vec2f(tt3[1],tt3[2])
+
+        xmin = min(t1[1], t2[1], t3[1])
+        xmax = max(t1[1], t2[1], t3[1])
+        ymin = min(t1[2], t2[2], t3[2])
+        ymax = max(t1[2], t2[2], t3[2])
+        w = xmax - xmin
+        h = ymax - ymin
+
+        # TODO Raster resolution Nx, Ny should determined from a parameter like px_per_units
+        # which specifies resolution in screen space.
+        Nx, Ny = 5, 5
+
+        rxs, rys = LinRange(xmin, xmax, Nx), LinRange(ymin, ymax, Ny)
+        color_matrix = rasterize_mesh(t1, t2, t3, c1, c2, c3, rxs, rys, true)
+        s = 0.005
+        v1, v2, v3 = stretch_vertices(t1, t2, t3, s)
+
+        encoded_image = svg_encode_image(color_matrix)
+
+        # apply a clip with the stretched vertices to get a (transparent) triangle
+        id = "$(string(UUIDs.uuid1()))"
+        clip = Element("clipPath")
+        clip.id = id
+        path = Element("path")
+        path.d = "M $(join(v1,",")) L $(join(v2,",")) L $(join(v3,",")) Z"
+        push!(clip, path)
+        push!(svg_defs, clip)
+
+        image = Element("image")
+        image.width = w
+        image.height = h
+        image.x = xmin
+        image.y = ymin
+        image."xlink:href" = "data:image/png;base64,$encoded_image"
+        image."clip-path" = "url(#$id)"
+        image."clip-rule" = "nonzero"
+        # disable aspect ratio preservation
+        image.preserveAspectRatio = "none"
+
+        push!(svg_el, image)
+    end
+
+    return
+end
 
 function rasterize_mesh(t1, t2, t3, # triangle's vertices
                         c1, c2, c3, # colors at vertices,
-                        rxs, rys) # raster coordinates
+                        rxs, rys, # raster coordinates
+                        sanitize_all=false)
 
     Nx, Ny = length(rxs), length(rys)
     color_matrix = zeros(RGBAf, (Nx, Ny))
@@ -1126,7 +1162,7 @@ function rasterize_mesh(t1, t2, t3, # triangle's vertices
                        w1*c1.g + w2*c2.g + w3*c3.g,
                        w1*c1.b + w2*c2.b + w3*c3.b,
                        w1*c1.alpha + w2*c2.alpha + w3*c3.alpha )
-        if !is_inside_triangle(t1, t2, t3, p)
+        if !is_inside_triangle(t1, t2, t3, p) || sanitize_all
             # sanitize color if we 'extrapolated'
             r = max(min(color.r, 1.0), 0.0)
             g = max(min(color.g, 1.0), 0.0)

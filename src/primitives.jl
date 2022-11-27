@@ -1205,7 +1205,27 @@ end
 ################################################################################
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Surface))
+    # Pretend the surface plot is a mesh plot and plot that instead
+    mesh = surface2mesh(primitive[1][], primitive[2][], primitive[3][])
+    old = primitive[:color]
+    if old[] === nothing
+        primitive[:color] = primitive[3]
+    end
+    if !haskey(primitive, :faceculling)
+        primitive[:faceculling] = Observable(-10)
+    end
+    draw_mesh3D(scene, screen, primitive, mesh)
+    primitive[:color] = old
+    return
+end
 
+function surface2mesh(xs, ys, zs::AbstractMatrix)
+    ps = Makie.matrix_grid(p-> nan2zero.(p), xs, ys, zs)
+    rect = Tesselation(Rect2f(0, 0, 1, 1), size(zs))
+    faces = decompose(QuadFace{Int}, rect)
+    uv = map(x-> Vec2f(1f0 - x[2], 1f0 - x[1]), decompose_uv(rect))
+    uvm = GeometryBasics.Mesh(GeometryBasics.meta(ps; uv=uv), faces)
+    return GeometryBasics.normal_mesh(uvm)
 end
 
 ################################################################################
@@ -1213,5 +1233,54 @@ end
 ################################################################################
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.MeshScatter))
+    @get_attribute(primitive, (color, model, marker, markersize, rotations))
 
+    if color isa AbstractArray{<: Number}
+        color = numbers_to_colors(color, primitive)
+    end
+
+    m = convert_attribute(marker, key"marker"(), key"meshscatter"())
+    pos = primitive[1][]
+    # For correct z-ordering we need to be in view/camera or screen space
+    model = copy(model)
+    view = scene.camera.view[]
+
+    zorder = sortperm(pos, by = p -> begin
+        p4d = to_ndim(Vec4f, to_ndim(Vec3f, p, 0f0), 1f0)
+        cam_pos = view * model * p4d
+        cam_pos[3] / cam_pos[4]
+    end, rev=false)
+
+    submesh = Attributes(
+        model=model,
+        color=color,
+        shading=primitive.shading, diffuse=primitive.diffuse,
+        specular=primitive.specular, shininess=primitive.shininess,
+        faceculling=get(primitive, :faceculling, -10)
+    )
+
+    if !(rotations isa Vector)
+        R = Makie.rotationmatrix4(to_rotation(rotations))
+        submesh[:model] = model * R
+    end
+    scales = primitive[:markersize][]
+
+    for i in zorder
+        p = pos[i]
+        if color isa AbstractVector
+            submesh[:color] = color[i]
+        end
+        if rotations isa Vector
+            R = Makie.rotationmatrix4(to_rotation(rotations[i]))
+            submesh[:model] = model * R
+        end
+        scale = markersize isa Vector ? markersize[i] : markersize
+
+        draw_mesh3D(
+            scene, screen, submesh, m, pos = p,
+            scale = scale isa Real ? Vec3f(scale) : to_ndim(Vec3f, scale, 1f0)
+        )
+    end
+
+    return
 end

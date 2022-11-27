@@ -128,6 +128,88 @@ end
 #                                Mesh handling                                 #
 ################################################################################
 
+struct FaceIterator{Iteration, T, F, ET} <: AbstractVector{ET}
+    data::T
+    faces::F
+end
+
+function (::Type{FaceIterator{Typ}})(data::T, faces::F) where {Typ, T, F}
+    FaceIterator{Typ, T, F}(data, faces)
+end
+function (::Type{FaceIterator{Typ, T, F}})(data::AbstractVector, faces::F) where {Typ, F, T}
+    FaceIterator{Typ, T, F, NTuple{3, eltype(data)}}(data, faces)
+end
+function (::Type{FaceIterator{Typ, T, F}})(data::T, faces::F) where {Typ, T, F}
+    FaceIterator{Typ, T, F, NTuple{3, T}}(data, faces)
+end
+function FaceIterator(data::AbstractVector, faces)
+    if length(data) == length(faces)
+        FaceIterator{:PerFace}(data, faces)
+    else
+        FaceIterator{:PerVert}(data, faces)
+    end
+end
+
+Base.size(fi::FaceIterator) = size(fi.faces)
+Base.getindex(fi::FaceIterator{:PerFace}, i::Integer) = fi.data[i]
+Base.getindex(fi::FaceIterator{:PerVert}, i::Integer) = fi.data[fi.faces[i]]
+Base.getindex(fi::FaceIterator{:Const}, i::Integer) = ntuple(i-> fi.data, 3)
+
+color_or_nothing(c) = isnothing(c) ? nothing : to_color(c)
+function get_color_attr(attributes, attribute)::Union{Nothing, RGBAf}
+    return color_or_nothing(to_value(get(attributes, attribute, nothing)))
+end
+
+function per_face_colors(
+        color, colormap, colorrange, matcap, faces, normals, uv,
+        lowclip=nothing, highclip=nothing, nan_color=nothing
+    )
+    if matcap !== nothing
+        wsize = reverse(size(matcap))
+        wh = wsize .- 1
+        cvec = map(normals) do n
+            muv = 0.5n[Vec(1,2)] .+ Vec2f(0.5)
+            x, y = clamp.(round.(Int, Tuple(muv) .* wh) .+ 1, 1, wh)
+            return matcap[end - (y - 1), x]
+        end
+        return FaceIterator(cvec, faces)
+    elseif color isa Colorant
+        return FaceIterator{:Const}(color, faces)
+    elseif color isa AbstractArray
+        if color isa AbstractVector{<: Colorant}
+            return FaceIterator(color, faces)
+        elseif color isa AbstractArray{<: Number}
+            low, high = extrema(colorrange)
+            cvec = map(color[:]) do c
+                if isnan(c) && nan_color !== nothing
+                    return nan_color
+                elseif c < low && lowclip !== nothing
+                    return lowclip
+                elseif c > high && highclip !== nothing
+                    return highclip
+                else
+                    Makie.interpolated_getindex(colormap, c, colorrange)
+                end
+            end
+            return FaceIterator(cvec, faces)
+        elseif color isa Makie.AbstractPattern
+            # let next level extend and fill with CairoPattern
+            return color
+        elseif color isa AbstractMatrix{<: Colorant} && uv !== nothing
+            wsize = reverse(size(color))
+            wh = wsize .- 1
+            cvec = map(uv) do uv
+                x, y = clamp.(round.(Int, Tuple(uv) .* wh) .+ 1, 1, wh)
+                return color[end - (y - 1), x]
+            end
+            # TODO This is wrong and doesn't actually interpolate
+            # Inside the triangle sampling the color image
+            return FaceIterator(cvec, faces)
+        end
+    end
+    error("Unsupported Color type: $(typeof(color))")
+end
+
 """
 Finds a font that can represent the unicode character!
 Returns Makie.defaultfont() if not representable!

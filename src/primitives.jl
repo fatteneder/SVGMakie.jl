@@ -780,9 +780,352 @@ end
 #                                     Mesh                                     #
 ################################################################################
 
+function barycentric_weights_triangle(p1, p2, p3, q)
+    denom = (p2[2] - p3[2]) * (p1[1] - p3[1]) + (p3[1] - p2[1]) * (p1[2] - p3[2])
+    w1 = ( (p2[2] - p3[2]) * (q[1] - p3[1]) + (p3[1] - p2[1]) * (q[2] - p3[2]) ) / denom
+    w2 = ( (p3[2] - p1[2]) * (q[1] - p3[1]) + (p1[1] - p3[1]) * (q[2] - p3[2]) ) / denom
+    w3 = 1 - w1 - w2
+    return w1, w2, w3
+    # return c1 * w1 + c2 * w2 + c3 * w3
+end
+
+function angle_align_upwards(d)
+    if isapprox(d[1], 0)
+        return d[2] > 0 ? 0 : -pi
+    elseif isapprox(d[2], 0)
+        return d[1] > 0 ? pi/2 : -pi/2
+    else
+        # println(d[1] > 0 ? "pos" : "neg")
+        a = pi/2 - atan(d[2], d[1])
+        return d[1] > 0 ? a : -a
+    end
+end
+
+function is_inside_triangle(p1, p2, p3, q)
+
+    d = p2 .- p1
+    alpha = angle_align_upwards(d)
+    # alpha = if isapprox(d[1], 0)
+    #     d[2] > 0 ? 0 : -pi
+    # elseif isapprox(d[2], 0)
+    #     d[1] > 0 ? pi/2 : -pi/2
+    # else
+    #     # println(d[1] > 0 ? "pos" : "neg")
+    #     a = pi/2 - atan(d[2], d[1])
+    #     d[1] > 0 ? a : -a
+    # end
+    rot = Mat2f(cos(alpha), sin(alpha), -sin(alpha), cos(alpha))
+
+    up = rot * d
+    r3 = rot * (p3 .- p1)
+    qq = rot * (q .- p1)
+
+    # qq and r3 lie on opposite sites
+    # println("signs")
+    # display(qq[1])
+    # display(r3[1])
+    qq[1] * r3[1] < 0 && return false
+
+    # bring both to positive side
+    qqx = abs(qq[1])
+    r3x = abs(r3[1])
+
+    slope_13 = r3[2] / r3x
+    slope_23 = (r3[2] - up[2]) / r3x
+    slope_1qq = qq[2] / qqx
+    slope_2qq = (qq[2] - up[2]) / qqx
+
+    # println("slopes")
+    # println(slope_13)
+    # println(slope_23)
+    # println(slope_1qq)
+    # println(slope_2qq)
+
+    return slope_1qq > slope_13 && slope_2qq < slope_23
+end
+
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Mesh))
+    mesh = primitive[1][]
+    if Makie.cameracontrols(scene) isa Union{Camera2D, Makie.PixelCamera, Makie.EmptyCamera}
+        draw_mesh2D(scene, screen, primitive, mesh)
+    else
+        if !haskey(primitive, :faceculling)
+            primitive[:faceculling] = Observable(-10)
+        end
+        draw_mesh3D(scene, screen, primitive, mesh)
+    end
+    return nothing
+end
+
+function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
+    @get_attribute(plot, (color,))
+    color = to_color(hasproperty(mesh, :color) ? mesh.color : color)
+    vs =  decompose(Point2f, mesh)::Vector{Point2f}
+    fs = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
+    uv = decompose_uv(mesh)::Union{Nothing, Vector{Vec2f}}
+    model = plot.model[]::Mat4f
+    colormap = haskey(plot, :colormap) ? to_colormap(plot.colormap[]) : nothing
+    colorrange = convert_attribute(to_value(get(plot, :colorrange, nothing)), key"colorrange"())::Union{Nothing, Vec2f}
+
+    lowclip = get_color_attr(plot, :lowclip)
+    highclip = get_color_attr(plot, :highclip)
+    nan_color = get_color_attr(plot, :nan_color)
+
+    cols = per_face_colors(
+        color, colormap, colorrange, nothing, fs, nothing, uv,
+        lowclip, highclip, nan_color)
+
+    space = to_value(get(plot, :space, :data))::Symbol
+    return draw_mesh2D(scene, screen, cols, space, vs, fs, model)
+end
+
+function draw_mesh2D(scene, screen, per_face_cols, space::Symbol,
+        vs::Vector{Point2f}, fs::Vector{GLTriangleFace}, model::Mat4f)
+
+    svg_el = last(root(screen.svg))
+
+    # raster resolution
+    Nx, Ny = 100, 100
+
+    # svg_el = last(root(screen.svg))
+    #
+    for (f, (c1, c2, c3)) in zip(fs, per_face_cols)
+
+        t1, t2, t3 =  project_position.(scene, space, vs[f], (model,)) #triangle points
+
+        xmin = min(t1[1], t2[1], t3[1])
+        xmax = max(t1[1], t2[1], t3[1])
+        ymin = min(t1[2], t2[2], t3[2])
+        ymax = max(t1[2], t2[2], t3[2])
+
+        w = xmax - xmin
+        h = ymax - ymin
+
+        # rastering size
+        dxdy = Vec2f(w/(Nx-1), h/(Ny-1))
+        # origin
+        o = Vec2f(xmin, ymin)
+
+        # WIP
+        # determine sizes of a rectangle that aligns with one edge with the longest triangle side
+        # d12 = Vec2f(t2 .- t1)
+        # d13 = Vec2f(t3 .- t1)
+        # d23 = Vec2f(t3 .- t2)
+        # nd12 = norm(d12)
+        # nd13 = norm(d13)
+        # nd23 = norm(d23)
+        # dd = nd12 > nd13 ? (nd12 > nd23 ? d12 : d23) : (nd13 > nd23 ? d13 : d23)
+        # a = angle_align_upwards(dd)
+        # rot = Mat2f(cos(a), sin(a), -sin(a), cos(a))
+        # r1, r2, r3 = rot * (t1 - dd), rot * (t2 - dd), rot * (t3 - dd)
+
+        color_matrix = zeros(RGBAf, (Nx, Ny))
+        println("sers")
+        for ix = 1:Nx, iy = 1:Ny
+            p = dxdy .* Vec2f(ix-1, iy-1) .+ o
+            # println(t1, ", ", t2, ", ", t3, ", ", p)
+            !is_inside_triangle(t1, t2, t3, p) && continue
+            # println("JUHHHUUU")
+            # println(p)
+            w1, w2, w3 = barycentric_weights_triangle(t1, t2, t3, p)
+            color = RGBAf( w1*c1.r + w2*c2.r + w3*c3.r,
+                           w1*c1.g + w2*c2.g + w3*c3.g,
+                           w1*c1.b + w2*c2.b + w3*c3.b,
+                           w1*c1.alpha + w2*c2.alpha + w3*c3.alpha )
+            color_matrix[ix,iy] = color
+        end
+
+        # println(color_matrix)
+
+        # convert image to PNG file format and then base64 encode it
+        stream = Stream{format"PNG"}(IOBuffer())
+        save(stream, color_matrix)
+        encoded_image = base64encode(take!(stream.io))
+
+        image = Element("image")
+        image.width = w
+        image.height = h
+        image.x = xmin
+        image.y = ymin
+        image."xlink:href" = "data:image/png;base64,$encoded_image"
+
+        # display aspect ratio preservation
+        image.preserveAspectRatio = "none"
+
+        push!(svg_el, image)
+    end
 
 end
+
+# function average_z(positions, face)
+#     vs = positions[face]
+#     sum(v -> v[3], vs) / length(vs)
+# end
+#
+# nan2zero(x) = !isnan(x) * x
+#
+#
+# function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f0)
+#     # Priorize colors of the mesh if present
+#     @get_attribute(attributes, (color,))
+#
+#     colormap = haskey(attributes, :colormap) ? to_colormap(attributes.colormap[]) : nothing
+#     colorrange = convert_attribute(to_value(get(attributes, :colorrange, nothing)), key"colorrange"())::Union{Nothing, Vec2f}
+#     matcap = to_value(get(attributes, :matcap, nothing))
+#
+#     color = hasproperty(mesh, :color) ? mesh.color : color
+#     meshpoints = decompose(Point3f, mesh)::Vector{Point3f}
+#     meshfaces = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
+#     meshnormals = decompose_normals(mesh)::Vector{Vec3f}
+#     meshuvs = texturecoordinates(mesh)::Union{Nothing, Vector{Vec2f}}
+#
+#     lowclip = get_color_attr(attributes, :lowclip)
+#     highclip = get_color_attr(attributes, :highclip)
+#     nan_color = get_color_attr(attributes, :nan_color)
+#
+#     per_face_col = per_face_colors(
+#         color, colormap, colorrange, matcap, meshfaces, meshnormals, meshuvs,
+#         lowclip, highclip, nan_color
+#     )
+#
+#     @get_attribute(attributes, (shading, diffuse,
+#         specular, shininess, faceculling))
+#
+#     model = attributes.model[]::Mat4f
+#     space = to_value(get(attributes, :space, :data))::Symbol
+#
+#     draw_mesh3D(
+#         scene, screen, space, meshpoints, meshfaces, meshnormals, per_face_col, pos, scale,
+#         model, shading::Bool, diffuse::Vec3f,
+#         specular::Vec3f, shininess::Float32, faceculling::Int
+#     )
+# end
+#
+# function draw_mesh3D(
+#         scene, screen, space, meshpoints, meshfaces, meshnormals, per_face_col, pos, scale,
+#         model, shading, diffuse,
+#         specular, shininess, faceculling
+#     )
+#     ctx = screen.context
+#     view = ifelse(is_data_space(space), scene.camera.view[], Mat4f(I))
+#     projection = Makie.space_to_clip(scene.camera, space, false)
+#     i = Vec(1, 2, 3)
+#     normalmatrix = transpose(inv(view[i, i] * model[i, i]))
+#
+#     # Mesh data
+#     # transform to view/camera space
+#     func = Makie.transform_func_obs(scene)[]
+#     # pass func as argument to function, so that we get a function barrier
+#     # and have `func` be fully typed inside closure
+#     vs = broadcast(meshpoints, (func,)) do v, f
+#         # Should v get a nan2zero?
+#         v = Makie.apply_transform(f, v)
+#         p4d = to_ndim(Vec4f, scale .* to_ndim(Vec3f, v, 0f0), 1f0)
+#         view * (model * p4d .+ to_ndim(Vec4f, pos, 0f0))
+#     end
+#
+#     ns = map(n -> normalize(normalmatrix * n), meshnormals)
+#     # Liight math happens in view/camera space
+#     pointlight = Makie.get_point_light(scene)
+#     lightposition = if !isnothing(pointlight)
+#         pointlight.position[]
+#     else
+#         Vec3f(0)
+#     end
+#
+#     ambientlight = Makie.get_ambient_light(scene)
+#     ambient = if !isnothing(ambientlight)
+#         c = ambientlight.color[]
+#         Vec3f(c.r, c.g, c.b)
+#     else
+#         Vec3f(0)
+#     end
+#
+#     lightpos = (view * to_ndim(Vec4f, lightposition, 1.0))[Vec(1, 2, 3)]
+#
+#     # Camera to screen space
+#     ts = map(vs) do v
+#         clip = projection * v
+#         @inbounds begin
+#             p = (clip ./ clip[4])[Vec(1, 2)]
+#             p_yflip = Vec2f(p[1], -p[2])
+#             p_0_to_1 = (p_yflip .+ 1f0) ./ 2f0
+#         end
+#         p = p_0_to_1 .* scene.camera.resolution[]
+#         return Vec3f(p[1], p[2], clip[3])
+#     end
+#
+#     # Approximate zorder
+#     average_zs = map(f -> average_z(ts, f), meshfaces)
+#     zorder = sortperm(average_zs)
+#
+#     # Face culling
+#     zorder = filter(i -> any(last.(ns[meshfaces[i]]) .> faceculling), zorder)
+#
+#     draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightpos, shininess, diffuse, ambient, specular)
+#     return
+# end
+#
+# function _calculate_shaded_vertexcolors(N, v, c, lightpos, ambient, diffuse, specular, shininess)
+#     L = normalize(lightpos .- v[Vec(1,2,3)])
+#     diff_coeff = max(dot(L, N), 0f0)
+#     H = normalize(L + normalize(-v[Vec(1, 2, 3)]))
+#     spec_coeff = max(dot(H, N), 0f0)^shininess
+#     c = RGBAf(c)
+#     # if this is one expression it introduces allocations??
+#     new_c_part1 = (ambient .+ diff_coeff .* diffuse) .* Vec3f(c.r, c.g, c.b) #.+
+#     new_c = new_c_part1 .+ specular * spec_coeff
+#     RGBAf(new_c..., c.alpha)
+# end
+#
+# function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightpos, shininess, diffuse, ambient, specular)
+#     pattern = Cairo.CairoPatternMesh()
+#
+#     for k in reverse(zorder)
+#         f = meshfaces[k]
+#         # avoid SizedVector through Face indexing
+#         t1 = ts[f[1]]
+#         t2 = ts[f[2]]
+#         t3 = ts[f[3]]
+#
+#         facecolors = per_face_col[k]
+#         # light calculation
+#         if shading
+#             c1, c2, c3 = Base.Cartesian.@ntuple 3 i -> begin
+#                 # these face index expressions currently allocate for SizedVectors
+#                 # if done like `ns[f]`
+#                 N = ns[f[i]]
+#                 v = vs[f[i]]
+#                 c = facecolors[i]
+#                 _calculate_shaded_vertexcolors(N, v, c, lightpos, ambient, diffuse, specular, shininess)
+#             end
+#         else
+#             c1, c2, c3 = facecolors
+#         end
+#
+#         # debug normal coloring
+#         # n1, n2, n3 = Vec3f(0.5) .+ 0.5ns[f]
+#         # c1 = RGB(n1...)
+#         # c2 = RGB(n2...)
+#         # c3 = RGB(n3...)
+#
+#         Cairo.mesh_pattern_begin_patch(pattern)
+#
+#         Cairo.mesh_pattern_move_to(pattern, t1[1], t1[2])
+#         Cairo.mesh_pattern_line_to(pattern, t2[1], t2[2])
+#         Cairo.mesh_pattern_line_to(pattern, t3[1], t3[2])
+#
+#         mesh_pattern_set_corner_color(pattern, 0, c1)
+#         mesh_pattern_set_corner_color(pattern, 1, c2)
+#         mesh_pattern_set_corner_color(pattern, 2, c3)
+#
+#         Cairo.mesh_pattern_end_patch(pattern)
+#     end
+#     Cairo.set_source(ctx, pattern)
+#     Cairo.close_path(ctx)
+#     Cairo.paint(ctx)
+# end
+
 
 ################################################################################
 #                                   Surface                                    #

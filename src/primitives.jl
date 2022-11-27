@@ -882,7 +882,7 @@ function draw_mesh2D(scene, screen, per_face_cols, space::Symbol,
         s = 0.005
         v1, v2, v3 = stretch_vertices(t1, t2, t3, s)
 
-        encoded_image = svg_encode_image(color_matrix)
+        encoded_image = svg_encode_image(permutedims(color_matrix, (2,1)))
 
         # apply a clip with the stretched vertices to get a (transparent) triangle
         id = "$(string(UUIDs.uuid1()))"
@@ -1086,7 +1086,7 @@ function draw_pattern(svg, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
         s = 0.005
         v1, v2, v3 = stretch_vertices(t1, t2, t3, s)
 
-        encoded_image = svg_encode_image(color_matrix)
+        encoded_image = svg_encode_image(permutedims(color_matrix, (2,1)))
 
         # apply a clip with the stretched vertices to get a (transparent) triangle
         id = "$(string(UUIDs.uuid1()))"
@@ -1149,7 +1149,8 @@ function rasterize_mesh(t1, t2, t3, # triangle's vertices
             g = max(min(color.g, 1.0), 0.0)
             b = max(min(color.b, 1.0), 0.0)
             alpha = max(min(color.alpha, 1.0), 0.0)
-            color = RGBAf(isnan(r) ? 0.0 : r, isnan(g) ? 0.0 : g, isnan(b) ? 0.0 : g,
+            color = RGBAf(r, g, b, alpha)
+            color = RGBAf(isnan(r) ? 0.0 : r, isnan(g) ? 0.0 : g, isnan(b) ? 0.0 : b,
                           isnan(alpha) ? 0.0 : alpha)
         end
         color_matrix[ix,iy] = color

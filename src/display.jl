@@ -23,6 +23,7 @@ function Makie.backend_show(screen::Screen, io::IO, ::MIME"image/svg+xml", scene
     # Or should io be connected with a stream/pipe to an image viewer?
     svgfile = "/tmp/svgmakie.svg"
     open(svgfile, "w") do file
+        @info "Writing svg output to file '$svgfile'"
         write(file, svg)
     end
 

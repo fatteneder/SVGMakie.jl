@@ -33,8 +33,8 @@
 - [x] Implement `Heatmap, Image`.
 - [x] Implement `Scatter`.
 - [x] Implement `Mesh`.
-- [ ] Implement `Surface`. In `CairoMakie` this is implemented through `Mesh`.
-- [ ] Implement `MeshScatter`. In `CairoMakie` this is implemented through `Mesh`.
+- [x] Implement `Surface`. In `CairoMakie` this is implemented through `Mesh`.
+- [x] Implement `MeshScatter`. In `CairoMakie` this is implemented through `Mesh`.
 - [ ] Optimize SVG output.
   - Limit line length to 255 chars (recommended by W3).
   - Remove superficial white spaces in commands.
@@ -53,6 +53,7 @@
   This could be done by generating one big raster image with all zeros (transparent) pixels,
   then traverse the meshes in reverse z depth (back to front) and merge the `color_matrix`
   with the one of the current layer, where the latter's values are priotized.
+  These optimizations will also effect performance/quality `Surface, MeshScatter`.
 
 # Resources
 

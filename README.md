@@ -44,6 +44,7 @@
   Atm we have to set `Makie.ALWAYS_INLINE_PLOTS[] = false` and use
   `Makie.display(f; backend=SVGMakie)`.
 - [ ] Setup `save(filename, fig)`. Atm we always write to `/tmp/svgmakie.svg`.
+- [ ] Fix `text!` which shows nothing.
 
 # Resources
 

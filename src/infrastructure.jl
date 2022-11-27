@@ -91,24 +91,37 @@ end
 
 
 function draw_plot(scene::Scene, screen::Screen, primitive::Combined)
-    if to_value(get(primitive, :visible, true))
-        if isempty(primitive.plots)
-            draw_atomic(scene, screen, primitive)
-        else
-            zvals = Makie.zvalue2d.(primitive.plots)
-            for idx in sortperm(zvals)
-                plot = primitive.plots[idx]
-                if plot isa Makie.Text{<:Tuple{<:Union{AbstractArray{<:AbstractVector}, GeometryBasics.AbstractPoint}}}
-                    for p in plot.plots
-                        if p isa Text{<:Tuple{<:Union{AbstractArray{<:Makie.GlyphCollection}, Makie.GlyphCollection}}}
-                            draw_atomic(scene, screen, p, plot.text)
-                        else
-                            draw_plot(scene, screen, p)
-                        end
-                    end
-                else
-                    draw_plot(scene, screen, plot)
-                end
+    !to_value(get(primitive, :visible, true)) && return
+    if isempty(primitive.plots)
+        draw_atomic(scene, screen, primitive)
+    else
+        zvals = Makie.zvalue2d.(primitive.plots)
+        for idx in sortperm(zvals)
+            draw_plot(scene, screen, primitive.plots[idx])
+        end
+    end
+    return
+end
+
+
+# We need to intercept Makie.Text in order to extract the :text field (if present)
+# and forward it to draw_atomic.
+function draw_plot(scene::Scene, screen::Screen, primitive::Makie.Text,
+                   text_signal=nothing)
+    !to_value(get(primitive, :visible, true)) && return
+    if isempty(primitive.plots)
+        draw_atomic(scene, screen, primitive, text_signal)
+    else
+        zvals = Makie.zvalue2d.(primitive.plots)
+        if isnothing(text_signal) && :text in propertynames(primitive)
+            text_signal = primitive.text
+        end
+        for idx in sortperm(zvals)
+            p = primitive.plots[idx]
+            if p isa Makie.Text
+                draw_plot(scene, screen, p, text_signal)
+            else
+                draw_plot(scene, screen, p)
             end
         end
     end

@@ -487,9 +487,10 @@ function p3_to_p2(p::Point3{T}) where T
     end
 end
 
-function draw_atomic(scene::Scene, screen::Screen,
-        @nospecialize(primitive::Text{<:Tuple{<:Union{AbstractArray{<:Makie.GlyphCollection}, Makie.GlyphCollection}}}))
-    # nothing to do here
+function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text),
+        text_signal::Nothing)
+    @warn "Cannot plot $(typeof(primitive)) without a raw text string"
+    return
 end
 
 function draw_atomic(scene::Scene, screen::Screen,

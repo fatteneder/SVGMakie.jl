@@ -455,10 +455,7 @@ function draw_marker(svg_el, marker::Matrix{T}, pos, scale,
         strokecolor #= unused =#, strokewidth #= unused =#,
         marker_offset, rotation) where T<:Colorant
 
-    # convert marker to PNG file format and then base64 encode it
-    stream = Stream{format"PNG"}(IOBuffer())
-    save(stream, marker)
-    encoded_marker = base64encode(take!(stream.io))
+    encoded_marker = svg_encode_image(marker)
 
     w, h = size(marker)
 
@@ -758,10 +755,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Imag
     xymax = project_position(scene, space, Point2f(last.(imsize)), model)
     w, h = xymax[1] - xy[1], xy[2] - xymax[2]
 
-    # convert image to PNG file format and then base64 encode it
-    stream = Stream{format"PNG"}(IOBuffer())
-    save(stream, image)
-    encoded_image = base64encode(take!(stream.io))
+    encoded_image = svg_encode_image(image)
 
     image = Element("image")
     image.width = w
@@ -907,10 +901,7 @@ function draw_mesh2D(scene, screen, per_face_cols, space::Symbol,
         s = 0.005
         v1, v2, v3 = stretch_vertices(t1, t2, t3, s)
 
-        # convert image to PNG file format and then base64 encode it
-        stream = Stream{format"PNG"}(IOBuffer())
-        save(stream, color_matrix)
-        encoded_image = base64encode(take!(stream.io))
+        encoded_image = svg_encode_image(color_matrix)
 
         # apply a clip with the stretched vertices to get a (transparent) triangle
         id = "$(string(UUIDs.uuid1()))"

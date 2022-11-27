@@ -7,6 +7,13 @@ svg_color_alpha(color::TransparentColor) = "$(color.alpha)"
 
 svg_url(url) = "url(#$url)"
 
+function svg_encode_image(image)
+    # convert image to PNG file format and then base64 encode it
+    stream = Stream{format"PNG"}(IOBuffer())
+    save(stream, image)
+    return base64encode(take!(stream.io))
+end
+
 
 #######################################################################
 #       Methods below were copied from CairoMakie/src/utils.jl        #

@@ -54,7 +54,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
         # stroke each segment separately, this means disjointed segments with probably
         # wonky dash patterns if segments are short
         # TODO we can hide the gaps by setting the line cap to round
-        draw_multi(primitive, svg, projected_positions, color, linewidth,
+        draw_multi(primitive, svg_el, projected_positions, color, linewidth,
             isnothing(linestyle) ? nothing : diff(Float64.(linestyle))
         )
     else

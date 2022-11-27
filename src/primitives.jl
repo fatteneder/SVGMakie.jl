@@ -891,72 +891,21 @@ function draw_mesh2D(scene, screen, per_face_cols, space::Symbol,
 
         t1, t2, t3 =  project_position.(scene, space, vs[f], (model,)) #triangle points
 
-        # Triangle that are directly adjacent show white lines between, because the rasterized
-        # images don't touch exactly. Here we artificially stretch the triangle's vertices
-        # outwards (from each other) and use those for clipping the mesh image.
-        # Stretching is done along the line that connects a vertex and the center of its
-        # opposing triangle edge.
-        # vector connecting a corner with an opposing edge's center
-        s1 = Vec2f(@. t2 + (t3 - t2) / 2)
-        s2 = Vec2f(@. t1 + (t3 - t1) / 2)
-        s3 = Vec2f(@. t1 + (t2 - t1) / 2)
-        # vector connecting vertex and opposing edge
-        u1 = Vec2f(@. t1 - s1)
-        u2 = Vec2f(@. t2 - s2)
-        u3 = Vec2f(@. t3 - s3)
-        s = 0.005 # strech factor
-        # stretched vertices
-        v1 = Vec2f(@. t1 + s * u1)
-        v2 = Vec2f(@. t2 + s * u2)
-        v3 = Vec2f(@. t3 + s * u3)
-
-
-        # rasterize a mesh gradient
         xmin = min(t1[1], t2[1], t3[1])
         xmax = max(t1[1], t2[1], t3[1])
         ymin = min(t1[2], t2[2], t3[2])
         ymax = max(t1[2], t2[2], t3[2])
         w = xmax - xmin
         h = ymax - ymin
-        # TODO Raster resolution should be a parameter and given by px_per_units in screen space.
-        # raster resolution
+
+        # TODO Raster resolution Nx, Ny should determined from a parameter like px_per_units
+        # which specifies resolution in screen space.
         Nx, Ny = 25, 25
-        dxdy = Vec2f(w/(Nx-1), h/(Ny-1))
-        # origin
-        o = Vec2f(xmin, ymin)
 
-        # TODO: Optimization: Keep the rasterized mesh as small as possible by aligning the
-        # longest triangle side with the side of the raster. We would then have to
-        # rotate the raster below.
-        # d12 = Vec2f(t2 .- t1)
-        # d13 = Vec2f(t3 .- t1)
-        # d23 = Vec2f(t3 .- t2)
-        # nd12 = norm(d12)
-        # nd13 = norm(d13)
-        # nd23 = norm(d23)
-        # dd = nd12 > nd13 ? (nd12 > nd23 ? d12 : d23) : (nd13 > nd23 ? d13 : d23)
-        # a = angle_align_upwards(dd)
-        # rot = Mat2f(cos(a), sin(a), -sin(a), cos(a))
-        # r1, r2, r3 = rot * (t1 - dd), rot * (t2 - dd), rot * (t3 - dd)
-
-        color_matrix = zeros(RGBAf, (Nx, Ny))
-        for ix = 1:Nx, iy = 1:Ny
-            p = dxdy .* Vec2f(ix-1, iy-1) .+ o
-            w1, w2, w3 = barycentric_weights_triangle(t1, t2, t3, p)
-            color = RGBAf( w1*c1.r + w2*c2.r + w3*c3.r,
-                           w1*c1.g + w2*c2.g + w3*c3.g,
-                           w1*c1.b + w2*c2.b + w3*c3.b,
-                           w1*c1.alpha + w2*c2.alpha + w3*c3.alpha )
-            if !is_inside_triangle(t1, t2, t3, p)
-                # sanitize color if we 'extrapolated'
-                r = max(min(color.r, 1.0), 0.0)
-                g = max(min(color.g, 1.0), 0.0)
-                b = max(min(color.b, 1.0), 0.0)
-                alpha = max(min(color.alpha, 1.0), 0.0)
-                color = RGBAf(r, g, b, alpha)
-            end
-            color_matrix[ix,iy] = color
-        end
+        rxs, rys = LinRange(xmin, xmax, Nx), LinRange(ymin, ymax, Ny)
+        color_matrix = rasterize_mesh(t1, t2, t3, c1, c2, c3, rxs, rys)
+        s = 0.005
+        v1, v2, v3 = stretch_vertices(t1, t2, t3, s)
 
         # convert image to PNG file format and then base64 encode it
         stream = Stream{format"PNG"}(IOBuffer())
@@ -1158,6 +1107,70 @@ end
 #     Cairo.paint(ctx)
 # end
 
+function rasterize_mesh(t1, t2, t3, # triangle's vertices
+                        c1, c2, c3, # colors at vertices,
+                        rxs, rys) # raster coordinates
+
+    Nx, Ny = length(rxs), length(rys)
+    color_matrix = zeros(RGBAf, (Nx, Ny))
+
+    # TODO: Optimization: Keep the rasterized mesh as small as possible by aligning the
+    # longest triangle side with the side of the raster. We would then have to
+    # rotate the raster below.
+    # d12 = Vec2f(t2 .- t1)
+    # d13 = Vec2f(t3 .- t1)
+    # d23 = Vec2f(t3 .- t2)
+    # nd12 = norm(d12)
+    # nd13 = norm(d13)
+    # nd23 = norm(d23)
+    # dd = nd12 > nd13 ? (nd12 > nd23 ? d12 : d23) : (nd13 > nd23 ? d13 : d23)
+    # a = angle_align_upwards(dd)
+    # rot = Mat2f(cos(a), sin(a), -sin(a), cos(a))
+    # r1, r2, r3 = rot * (t1 - dd), rot * (t2 - dd), rot * (t3 - dd)
+
+    for ix = 1:Nx, iy = 1:Ny
+        p = Vec2f(rxs[ix], rys[iy])
+        w1, w2, w3 = barycentric_weights_triangle(t1, t2, t3, p)
+        color = RGBAf( w1*c1.r + w2*c2.r + w3*c3.r,
+                       w1*c1.g + w2*c2.g + w3*c3.g,
+                       w1*c1.b + w2*c2.b + w3*c3.b,
+                       w1*c1.alpha + w2*c2.alpha + w3*c3.alpha )
+        if !is_inside_triangle(t1, t2, t3, p)
+            # sanitize color if we 'extrapolated'
+            r = max(min(color.r, 1.0), 0.0)
+            g = max(min(color.g, 1.0), 0.0)
+            b = max(min(color.b, 1.0), 0.0)
+            alpha = max(min(color.alpha, 1.0), 0.0)
+            color = RGBAf(r, g, b, alpha)
+        end
+        color_matrix[ix,iy] = color
+    end
+
+    return color_matrix
+end
+
+function stretch_vertices(t1, t2, t3, s)
+
+    # Triangle that are directly adjacent show white lines between, because the rasterized
+    # images don't touch exactly. Here we artificially stretch the triangle's vertices
+    # outwards (from each other) and use those for clipping the mesh image.
+    # Stretching is done along the line that connects a vertex and the center of its
+    # opposing triangle edge.
+    # vector connecting a corner with an opposing edge's center
+    s1 = Vec2f(@. t2 + (t3 - t2) / 2)
+    s2 = Vec2f(@. t1 + (t3 - t1) / 2)
+    s3 = Vec2f(@. t1 + (t2 - t1) / 2)
+    # vector connecting vertex and opposing edge
+    u1 = Vec2f(@. t1 - s1)
+    u2 = Vec2f(@. t2 - s2)
+    u3 = Vec2f(@. t3 - s3)
+    # stretched vertices
+    v1 = Vec2f(@. t1 + s * u1)
+    v2 = Vec2f(@. t2 + s * u2)
+    v3 = Vec2f(@. t3 + s * u3)
+
+    return v1, v2, v3
+end
 
 ################################################################################
 #                                   Surface                                    #

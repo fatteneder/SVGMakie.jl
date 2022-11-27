@@ -783,7 +783,6 @@ function barycentric_weights_triangle(p1, p2, p3, q)
     w2 = ( (p3[2] - p1[2]) * (q[1] - p3[1]) + (p1[1] - p3[1]) * (q[2] - p3[2]) ) / denom
     w3 = 1 - w1 - w2
     return w1, w2, w3
-    # return c1 * w1 + c2 * w2 + c3 * w3
 end
 
 function angle_align_upwards(d)
@@ -792,7 +791,6 @@ function angle_align_upwards(d)
     elseif isapprox(d[2], 0)
         return d[1] > 0 ? pi/2 : -pi/2
     else
-        # println(d[1] > 0 ? "pos" : "neg")
         a = pi/2 - atan(d[2], d[1])
         return d[1] > 0 ? a : -a
     end

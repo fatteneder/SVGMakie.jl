@@ -1,5 +1,7 @@
 # SVGMakie
 
+Very experimental. See `mwe/` for (hopefully) working examples.
+
 # TODO
 - [ ] Understand SVG.
 - [x] (Roughly) Figure out what needs to be implemented from Makie.
@@ -94,5 +96,5 @@ to text, because they can also translate to chiildren `<tspan>` elements inside 
 
 # Other Notes
 
-- Shouldn't each backend add its defaults to `Makie.minimal_default` by itself?
-- `XML.jl` should implement `Base.push!(el::Element, s::String)`.
+- `Makie.jl`: Shouldn't each backend add its defaults to `Makie.minimal_default` by itself?
+- `XML.jl`: It should implement `Base.push!(el::Element, s::String)`.

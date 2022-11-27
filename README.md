@@ -54,8 +54,14 @@ Very experimental. See `mwe/` for (hopefully) working examples.
   all points that are visible from the current projection.
   This could be done by generating one big raster image with all zeros (transparent) pixels,
   then traverse the meshes in reverse z depth (back to front) and merge the `color_matrix`
-  with the one of the current layer, where the latter's values are priotized.
-  These optimizations will also effect performance/quality `Surface, MeshScatter`.
+  with the one of the current layer, where the latter's values are prioritized.
+  To get straight edges we fill currently the `color_matrix` also outside the triangle region
+  and latter clip it in the SVG. For this approach I think we would have to already 'clip' the
+  `color_matrix` before we merge them. But I fear that this might introduce zig-zag edges again.
+  To fix the latter we could try to artificially extend the 'clipped' `color_matrix` by
+  just duplicating the colors at the edges so that we have a fully colored area that we can clip
+  again in `SVG`. This leaves the problem of finding a non-trivial clipping path.
+  All these optimizations will also effect performance/quality `Surface, MeshScatter`.
 
 # Resources
 

@@ -32,7 +32,7 @@
 - [ ] Limit line lengths of svg output to 255 as suggested in section 8.3. Path in the svg 1.1 specs.
 - [x] Implement `Heatmap, Image`.
 - [x] Implement `Scatter`.
-- [ ] Implement `Mesh`.
+- [x] Implement `Mesh`.
 - [ ] Implement `Surface`. In `CairoMakie` this is implemented through `Mesh`.
 - [ ] Implement `MeshScatter`. In `CairoMakie` this is implemented through `Mesh`.
 - [ ] Optimize SVG output.
@@ -45,6 +45,14 @@
   `Makie.display(f; backend=SVGMakie)`.
 - [ ] Setup `save(filename, fig)`. Atm we always write to `/tmp/svgmakie.svg`.
 - [ ] Fix `text!` which shows nothing.
+- [ ] Optimize rastered mesh gradients, e.g. reduce the rasters size.
+- [ ] Convert `mwe/mwe_pts.jl` into unit tests.
+- [ ] Implement `AbstractPattern` using `<pattern>`.
+- [ ] Optimize `Mesh3d`: Atm we mesh all points, but it would be sufficient if we mesh only
+  all points that are visible from the current projection.
+  This could be done by generating one big raster image with all zeros (transparent) pixels,
+  then traverse the meshes in reverse z depth (back to front) and merge the `color_matrix`
+  with the one of the current layer, where the latter's values are priotized.
 
 # Resources
 

@@ -53,7 +53,9 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     if color isa AbstractArray || linewidth isa AbstractArray
         # stroke each segment separately, this means disjointed segments with probably
         # wonky dash patterns if segments are short
-        # TODO we can hide the gaps by setting the line cap to round
+        # TODO(CairoMakie) we can hide the gaps by setting the line cap to round
+        # TODO We are already doing this, but there is a question about how long the line
+        # should be, because the caps extend beyond the vertices.
         draw_multi(primitive, svg_el, projected_positions, color, linewidth,
             isnothing(linestyle) ? nothing : diff(Float64.(linestyle))
         )

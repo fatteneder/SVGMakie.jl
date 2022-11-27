@@ -1168,7 +1168,8 @@ function rasterize_mesh(t1, t2, t3, # triangle's vertices
             g = max(min(color.g, 1.0), 0.0)
             b = max(min(color.b, 1.0), 0.0)
             alpha = max(min(color.alpha, 1.0), 0.0)
-            color = RGBAf(r, g, b, alpha)
+            color = RGBAf(isnan(r) ? 0.0 : r, isnan(g) ? 0.0 : g, isnan(b) ? 0.0 : g,
+                          isnan(alpha) ? 0.0 : alpha)
         end
         color_matrix[ix,iy] = color
     end

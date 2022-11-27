@@ -1,6 +1,6 @@
 name = "SVGMakie"
 uuid = "a250cd04-e3c9-4942-a5f6-8cfbb59c3790"
-authors = ["flo "]
+authors = ["fatteneder"]
 version = "0.1.0"
 
 [deps]

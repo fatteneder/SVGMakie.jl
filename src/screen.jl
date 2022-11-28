@@ -1,9 +1,5 @@
-const LAST_INLINE = Ref(true)
-
-
-function activate!(; inline=LAST_INLINE[], type="png", screen_config...)
-    Makie.inline!(inline)
-    LAST_INLINE[] = inline
+function activate!(; type="png", screen_config...)
+    Makie.inline!(false)
     Makie.set_screen_config!(SVGMakie, screen_config)
     Makie.set_active_backend!(SVGMakie)
     return

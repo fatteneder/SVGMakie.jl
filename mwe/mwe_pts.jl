@@ -2,9 +2,6 @@ using SVGMakie
 SVGMakie.activate!()
 import SVGMakie.GeometryBasics: Mat2f
 
-# What does Makie.ALWAYS_INLINE_PLOTS do?
-Makie.ALWAYS_INLINE_PLOTS[] = false
-
 fig = Figure(resolution = (600, 400))
 ax = Axis(fig[1, 1])
 
@@ -41,5 +38,4 @@ display(isinside.(s))
 # display(SVGMakie.is_inside_triangle(p1, p2, p3, s))
 # display(SVGMakie.is_inside_triangle(p1, p2, p3, s))
 
-# Why do I have to pass on the backend?
-Makie.display(fig; backend=SVGMakie)
+display(fig)

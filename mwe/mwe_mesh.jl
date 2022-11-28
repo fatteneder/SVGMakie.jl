@@ -19,4 +19,4 @@ f = Figure()
 ax = Axis(f[1,1])
 mesh!(ax, vertices, faces, color = colors, shading = false)
 
-display(f)
+save("mwe_mesh.svg", fig)

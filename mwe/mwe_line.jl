@@ -7,4 +7,4 @@ ax = Axis(f[1,1])
 x = LinRange(-1,1,100)
 lines!(ax, x, x.^2)
 
-display(f)
+save("mwe_line.svg", fig)

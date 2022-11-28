@@ -11,4 +11,4 @@ ax = Axis(fig[1, 1])
 img = image!(ax, 1:200, 1:200, rotr90(img))
 # rotate!(img, π/3)
 
-display(fig)
+save("mwe_image.svg", fig)

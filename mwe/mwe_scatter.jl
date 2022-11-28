@@ -47,4 +47,4 @@ s = scatterlines!(ax, x, x.^2,
 # s = scatterlines!(ax, 1, 1, markers=[img])#, markersize=(500,500*h/w))
 
 
-display(f)
+save("mwe_scatter.svg", f)

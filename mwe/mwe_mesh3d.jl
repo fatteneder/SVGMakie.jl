@@ -10,4 +10,4 @@ ax = Axis3(f[1,1])
 mesh!(ax, brain,
       color = [tri[1][2] for tri in brain for i in 1:3], colormap = Reverse(:Spectral))
 
-display(f)
+save("mwe_mesh3d.svg", fig)

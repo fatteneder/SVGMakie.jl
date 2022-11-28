@@ -9,4 +9,4 @@ f = Figure()
 ax = Axis3(f[1,1])
 meshscatter!(ax, xs, ys, zs, markersize = 0.1, color = zs)
 
-display(f)
+save("mwe_meshscatter.svg", fig)

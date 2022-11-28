@@ -38,4 +38,4 @@ display(isinside.(s))
 # display(SVGMakie.is_inside_triangle(p1, p2, p3, s))
 # display(SVGMakie.is_inside_triangle(p1, p2, p3, s))
 
-display(fig)
+save("mwe_pts.svg", f)

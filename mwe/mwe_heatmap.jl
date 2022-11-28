@@ -11,4 +11,4 @@ Colorbar(fig[1, 2], hmap; label = "values", width = 15, ticksize = 15, tickalign
 colsize!(fig.layout, 1, Aspect(1, 1.0))
 colgap!(fig.layout, 7)
 
-display(fig)
+save("mwe_heatmap.svg", fig)

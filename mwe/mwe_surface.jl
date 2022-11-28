@@ -9,4 +9,4 @@ f = Figure()
 ax = Axis3(f[1,1])
 surface!(ax, xs, ys, zs)
 
-display(f)
+save("mwe_surface.svg", f)

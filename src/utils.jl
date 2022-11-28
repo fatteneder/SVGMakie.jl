@@ -68,6 +68,22 @@ function project_scale(scene::Scene, space, s, model = Mat4f(I))
     end
 end
 
+function project_rect(scene, space, rect::Rect, model)
+    mini = project_position(scene, space, minimum(rect), model)
+    maxi = project_position(scene, space, maximum(rect), model)
+    return Rect(mini, maxi .- mini)
+end
+
+function project_polygon(scene, space, poly::P, model) where P <: Polygon
+    ext = decompose(Point2f, poly.exterior)
+    interiors = decompose.(Point2f, poly.interiors)
+    Polygon(
+        Point2f.(project_position.(Ref(scene), space, ext, Ref(model))),
+        [Point2f.(project_position.(Ref(scene), space, interior, Ref(model)))
+         for interior in interiors],
+    )
+end
+
 ########################################
 #          Rotation handling           #
 ########################################

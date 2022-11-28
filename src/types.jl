@@ -11,7 +11,5 @@ end
 mutable struct Screen <: Makie.MakieScreen
     scene::Scene
     config::ScreenConfig
-    # TODO io still needed?
-    io::IOBuffer
     svg::SVG
 end

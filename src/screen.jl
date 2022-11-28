@@ -22,9 +22,7 @@ Base.show(io::IO, ::MIME"text/plain", screen::Screen) = println(io, "SVGMakie.Sc
 
 
 function Makie.apply_screen_config!(
-        screen::Screen, config::ScreenConfig, scene::Scene, io::IO, m::MIME{SYM}) where {SYM}
-    # TODO Do we need to copy whatever is in io to screen.svg?
-    # Could we use XML.Document for that?
+        screen::Screen, config::ScreenConfig, scene::Scene, io::IO, m::MIME)
     apply_config!(screen, config)
     return screen
 end
@@ -44,7 +42,7 @@ end
 
 function Screen(scene, config::ScreenConfig)
     w, h = round.(Int, size(scene))
-    Screen(scene, config, IOBuffer(), SVG(width=w, height=h))
+    Screen(scene, config, SVG(width=w, height=h))
 end
 
 
@@ -54,9 +52,20 @@ function Screen(scene::Scene; screen_config...)
 end
 
 
-function Screen(screen::Screen, io::IOBuffer)
+function Screen(screen::Screen)
     w, h = round.(Int, size(screen.scene))
-    return Screen(screen.scene, screen.config, io, SVG(width=w, height=h))
+    return Screen(screen.scene, screen.config, SVG(width=w, height=h))
+end
+
+# Needed for Makie's overloads of FileIO.save
+function Screen(screen::Screen, io_or_path::Union{Nothing, String, IO}, typ::Union{MIME, Symbol})
+    return Screen(screen.scene)
+end
+
+# Needed for Makie's overloads of FileIO.save
+function Screen(scene::Scene, config::ScreenConfig, io_or_path::Union{Nothing, String, IO},
+        typ::Union{MIME, Symbol})
+    return Screen(scene, config)
 end
 
 

@@ -29,40 +29,69 @@ end
 # in the rare case of per-vertex colors redirect to mesh drawing
 function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2},
         color::AbstractArray, model, strokecolor, strokewidth)
-    println("or maybe here?")
     draw_poly_as_mesh(scene, screen, poly)
 end
 
 function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2})
-    println("or here?")
     draw_poly(scene, screen, poly, points, poly.color[], poly.model[], poly.strokecolor[],
               poly.strokewidth[])
 end
 
 # # when color is a Makie.AbstractPattern, we don't need to go to Mesh
-# function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2},
-#         color::Union{Symbol, Colorant, Makie.AbstractPattern}, model, strokecolor, strokewidth)
-#     space = to_value(get(poly, :space, :data))
-#     points = project_position.(Ref(scene), space, points, Ref(model))
-#     Cairo.move_to(screen.context, points[1]...)
-#     for p in points[2:end]
-#         Cairo.line_to(screen.context, p...)
-#     end
-#     Cairo.close_path(screen.context)
-#     if color isa Makie.AbstractPattern
-#         cairopattern = Cairo.CairoPattern(color)
-#         Cairo.pattern_set_extend(cairopattern, Cairo.EXTEND_REPEAT);
-#         Cairo.set_source(screen.context, cairopattern)
-#     else
-#         Cairo.set_source_rgba(screen.context, rgbatuple(to_color(color))...)
-#     end
-#
-#     Cairo.fill_preserve(screen.context)
-#     Cairo.set_source_rgba(screen.context, rgbatuple(to_color(strokecolor))...)
-#     Cairo.set_line_width(screen.context, strokewidth)
-#     Cairo.stroke(screen.context)
-# end
-#
+function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2},
+        color::Union{Symbol, Colorant, Makie.AbstractPattern}, model, strokecolor, strokewidth)
+
+    space = to_value(get(poly, :space, :data))
+    points = project_position.(Ref(scene), space, points, Ref(model))
+    svg_el = last(root(screen.svg))
+
+    path = Element("path")
+    path.d = "M $(join(points[1],","))"
+    for p in points[2:end]
+        path.d *= " L $(join(p,","))"
+    end
+    path.d *= " Z"
+
+    sc = to_color(strokecolor)
+    path.stroke = svg_color(sc)
+    path."stroke-opacity" = svg_color_alpha(sc)
+    path."stroke-width" = strokewidth
+
+    if color isa Makie.AbstractPattern
+        id = "$(string(UUIDs.uuid1()))"
+        pattern = Element("pattern")
+        cw, ch = size(color)
+        sw, sh = size(scene)
+        pattern.x = 0
+        pattern.y = 0
+        pattern.width = cw
+        pattern.height = ch
+        pattern.patternUnits = "userSpaceOnUse"
+        pattern.id = id
+
+        image = Element("image")
+        image.x = 0
+        image.y = 0
+        image.width = cw
+        image.height = ch
+        encoded_image = svg_encode_image(rotl90(Makie.to_image(color)))
+        image."xlink:href" = "data:image/png;base64,$encoded_image"
+        image.preserveAspectRatio = "none"
+        push!(pattern, image)
+
+        path.fill = "url(#$id)"
+        push!(defs(screen.svg), pattern)
+    else
+        c = to_color(color)
+        path.fill = svg_color(c)
+        path."fill-opacity" = svg_color_alpha(c)
+    end
+
+    push!(svg_el, path)
+
+    return
+end
+
 function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vector{<:Point2}})
     println("are we here?")
     broadcast_foreach(points_list, poly.color[],
@@ -76,6 +105,7 @@ end
 draw_poly(scene::Scene, screen::Screen, poly, rect::Rect2) = draw_poly(scene, screen, poly, [rect])
 
 function draw_poly(scene::Scene, screen::Screen, poly, rects::Vector{<:Rect2})
+
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
     projected_rects = project_rect.(Ref(scene), space, rects, Ref(model))
@@ -110,8 +140,6 @@ function draw_poly(scene::Scene, screen::Screen, poly, rects::Vector{<:Rect2})
         rect.y = oy
         rect.width = w
         rect.height = h
-        println(ox)
-        println(oy)
 
         if c isa Makie.AbstractPattern
             error("Not implemented!")

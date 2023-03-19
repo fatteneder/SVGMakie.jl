@@ -549,8 +549,8 @@ function draw_glyph_collection(scene, svg, position, glyph_collection, text,
     id = Mat4f(I)
 
     glyph_pos = let
-        transform_func = scene.transformation.transform_func[]
-        p = Makie.apply_transform(transform_func, position)
+        transform_func = primitive.transformation.transform_func[]
+        p = Makie.apply_transform(transform_func, position, space)
 
         Makie.clip_to_space(scene.camera, markerspace) *
         Makie.space_to_clip(scene.camera, space) *
@@ -575,11 +575,11 @@ function draw_glyph_collection(scene, svg, position, glyph_collection, text,
 
         # TODO Should we set a fallback font in svg_text?
         # TODO Why do we need these ifs and CairoMakie doesnt?
-        if hasproperty(font, :family)
-            tspan."font-family" = font.family
+        if hasproperty(font, :family_name)
+            tspan."font-family" = font.family_name
         end
-        if hasproperty(font, :style)
-            tspan."font-style" = font.style
+        if hasproperty(font, :style_name)
+            tspan."font-style" = font.style_name
         end
 
         p3_offset = to_ndim(Point3f, offset, 0)
